@@ -527,7 +527,9 @@
                 : '<div class="p-6 text-center text-amber-600 text-sm">Loading…</div>';
               const itemNutJson = (item.nutriments || Object.keys(nut).length ? nut : null) ? JSON.stringify(item.nutriments || nut) : "";
               const itemNutSource = item.nutrition_source || "";
-              const needsFetch = Object.keys(nut).length === 0 ? "1" : "";
+              /* Always fetch LLM when we don't have openai_vision - macros/estimate/OFF are not the "best" answer */
+              const hasBestAnswer = (itemNutSource || data.source || "") === "openai_vision";
+              const needsFetch = hasBestAnswer ? "" : "1";
               const shortDesc = (item.description || "").trim().slice(0, 120);
               return `
               <div class="shrink-0 w-72 snap-center rounded-2xl overflow-hidden bg-white border border-stone-200/80 shadow-md hover:shadow-lg transition-shadow flex flex-col relative h-full min-h-[380px]" data-item-name="${escapeHtml(item.name)}" data-item-restaurant="${escapeHtml(item.restaurant || '')}" data-item-description="${escapeHtml(itemDesc)}" data-item-image-url="${escapeHtml(itemImg)}" data-item-nutrition="${escapeHtml(itemNutJson)}" data-item-nutrition-source="${escapeHtml(itemNutSource)}" data-item-price="${escapeHtml(item.price || '')}" data-item-macros="${escapeHtml(JSON.stringify(item.macronutrient_distribution_in_grams || {}))}">
