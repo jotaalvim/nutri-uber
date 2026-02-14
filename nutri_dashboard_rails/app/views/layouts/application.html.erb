@@ -185,7 +185,7 @@
         }
         window.addSecondOrderConfirmPrompt = addSecondOrderConfirmPrompt;
 
-        function addMedicationWarning(message) {
+        function addMedicationWarning(message, pendingOrder) {
           const bubble = document.createElement("div");
           bubble.className = "flex justify-start";
           bubble.innerHTML = '<div class="max-w-[85%] rounded-2xl px-4 py-2.5 bg-amber-100 border border-amber-300 text-amber-900">' +
@@ -193,6 +193,15 @@
             '<p class="text-sm mt-1 whitespace-pre-wrap break-words">' + escapeHtml(message) + '</p>' +
             '<p class="text-xs mt-2 text-amber-700">You can still order if you wish, but please be aware of these risks.</p></div>';
           messagesEl.appendChild(bubble);
+          if (pendingOrder) {
+            window.nutriPendingMedicationAcknowledgement = pendingOrder;
+            const promptBubble = document.createElement("div");
+            promptBubble.className = "flex justify-start";
+            promptBubble.innerHTML = '<div class="max-w-[85%] rounded-2xl px-4 py-2.5 bg-stone-100 text-stone-700">' +
+              '<p class="text-sm">Please reply in the chat to confirm you understand the risks before we can complete your order.</p></div>';
+            messagesEl.appendChild(promptBubble);
+            input.placeholder = "e.g. I understand the risks, I accept…";
+          }
           messagesEl.scrollTop = messagesEl.scrollHeight;
         }
         window.addMedicationWarning = addMedicationWarning;
@@ -234,6 +243,10 @@
           if (itemObj.nutriments && Object.keys(itemObj.nutriments || {}).length) logItem.nutriments = itemObj.nutriments;
           btn.disabled = true;
           btn.textContent = "…";
+          let orderReason = "";
+          if (reasonB64) {
+            try { orderReason = decodeURIComponent(escape(atob(reasonB64))); } catch (_) {}
+          }
           try {
             const checkRes = await fetch("/check_food_medication", {
               method: "POST",
@@ -242,13 +255,12 @@
             });
             const checkData = await checkRes.json();
             if (checkData.has_risk && checkData.warning_message) {
-              addMedicationWarning(checkData.warning_message);
+              addMedicationWarning(checkData.warning_message, { logItem: logItem, url: urlToOpen, patientId: pid, orderReason: orderReason });
+              btn.disabled = false;
+              btn.textContent = "Order →";
+              return;
             }
           } catch (_) {}
-          let orderReason = "";
-          if (reasonB64) {
-            try { orderReason = decodeURIComponent(escape(atob(reasonB64))); } catch (_) {}
-          }
           try {
             const res = await fetch("/add_to_food_log", {
               method: "POST",
@@ -280,6 +292,37 @@
           input.value = "";
           sendBtn.disabled = true;
           addMessage("user", text);
+
+          const medAck = window.nutriPendingMedicationAcknowledgement;
+          if (medAck && medAck.logItem && medAck.url && medAck.patientId) {
+            window.nutriPendingMedicationAcknowledgement = null;
+            input.placeholder = "Ask about nutrition…";
+            try {
+              const res = await fetch("/add_to_food_log", {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]')?.content || "", "Accept": "application/json" },
+                body: JSON.stringify({ patient_id: medAck.patientId, items: [medAck.logItem], meal_type: "Refeição", from_order: true, order_reason: medAck.orderReason || "" })
+              });
+              const data = await res.json();
+              if (res.ok) {
+                window.open(medAck.url, "_blank", "noopener");
+                if (!medAck.orderReason) {
+                  const today = new Date().toISOString().slice(0, 10);
+                  sessionStorage.setItem("nutriOrderReasonPrompt", JSON.stringify({ patientId: medAck.patientId, date: today }));
+                }
+                addMessage("assistant", "Order added. The page will refresh to show your update.");
+                window.location.reload();
+              } else {
+                addMessage("assistant", data.error || "Could not add to log");
+              }
+            } catch (err) {
+              addMessage("assistant", err.message || "Failed");
+            } finally {
+              sendBtn.disabled = false;
+              input.focus();
+            }
+            return;
+          }
 
           const pending = window.nutriOrderReasonPending;
           if (pending && pending.patientId && pending.date) {

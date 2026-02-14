@@ -320,7 +320,14 @@
                 const checkData = await checkRes.json();
                 if (checkData.has_risk && checkData.warning_message) {
                   if (typeof window.openChat === "function") window.openChat();
-                  if (typeof window.addMedicationWarning === "function") window.addMedicationWarning(checkData.warning_message);
+                  if (typeof window.addMedicationWarning === "function") {
+                    const logItem = { name: name, restaurant: restaurant };
+                    if (nutriments && Object.keys(nutriments).length) logItem.nutriments = nutriments;
+                    window.addMedicationWarning(checkData.warning_message, { logItem: logItem, url: url, patientId: patientId, orderReason: "" });
+                  }
+                  orderBtn.disabled = false;
+                  orderBtn.textContent = "Order →";
+                  return;
                 }
                 const res = await fetch("/add_to_food_log", {
                   method: "POST",
