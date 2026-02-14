@@ -1,7 +1,8 @@
-import time
+import json
 import re
-
+import time
 import requests
+from bs4 import BeautifulSoup
 
 uber_prefix = 'https://www.ubereats.com'
 uber_braga  = 'https://www.ubereats.com/pt-en/city/braga-norte'
@@ -30,7 +31,7 @@ teste = 'https://www.ubereats.com/pt-en/store/camada-francesinhas-braga-caranda/
 page = requests.get(teste)
 
 #menus_titulos = re.findall(r'<h1 data-testid="menu-item-title" class="_iw _ix _bm _bk _al _bc">([^\<]*)</h1>', page.text)
-menus_titulos = re.findall(r'', page.text)
+menus_titulos = re.findall(r'menu-item-title', page.text)
 
 menus_descricao = re.findall('', page.text)
 
@@ -39,6 +40,3 @@ print(menus_titulos)
 #<h1 data-testid="menu-item-title" class="_iw _ix _bm _bk _al _bc">Menu Mix</h1>
 # descriçao
 #<div class="_bo _el _bq _dt _w3 _w4 _bu"></div>
-
-
-
