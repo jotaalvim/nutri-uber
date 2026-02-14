@@ -1,0 +1,16 @@
+services:
+  nutri-dashboard:
+    build: .
+    image: nutri-dashboard-rails
+    ports:
+      - "4000:4000"
+    environment:
+      - RAILS_ENV=production
+      - DATABASE_PATH=/app/data/nutri_dashboard.db
+      - SECRET_KEY_BASE=nutri_dashboard_prod_secret_key_base_at_least_64_bytes_long_for_cookie_signing_12345
+      - RAILS_MASTER_KEY=45d872275c343156907d96a4f3c4ccf1
+    volumes:
+      - nutri_data:/app/data
+
+volumes:
+  nutri_data:

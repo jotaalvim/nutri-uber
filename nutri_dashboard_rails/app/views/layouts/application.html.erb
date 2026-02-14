@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title><%= content_for(:title) || "Nutri Dashboard" %></title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;0,9..144,700&display=swap" rel="stylesheet">
+
+    <%= yield :head %>
+
+    <link rel="icon" href="/icon.png" type="image/png">
+    <link rel="icon" href="/icon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="/icon.png">
+
+    <%= stylesheet_link_tag "tailwind", "data-turbo-track": "reload" %>
+  </head>
+
+  <body class="bg-amber-50 text-stone-800 antialiased min-h-screen">
+    <div class="min-h-screen flex flex-col">
+      <header class="sticky top-0 z-10 bg-white/95 backdrop-blur-sm border-b border-stone-200/80 shadow-sm">
+        <div class="mx-auto max-w-6xl px-4 py-4 sm:px-6 lg:px-8">
+          <div class="flex items-center gap-3">
+            <span class="text-3xl" aria-hidden="true">🥗</span>
+            <div>
+              <h1 class="font-display text-xl font-semibold text-stone-800">Nutri Dashboard</h1>
+              <p class="text-xs text-stone-500">Nutrition planning at a glance</p>
+            </div>
+          </div>
+        </div>
+      </header>
+      <main class="flex-1 mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
+        <%= yield %>
+      </main>
+    </div>
+  </body>
+</html>
