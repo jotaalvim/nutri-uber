@@ -1,0 +1,399 @@
+[
+    {
+        "patient_name": "Paciente 1",
+        "dee_goal": 1700,
+        "dee_goal_unit": "kcal/24h",
+        "macronutrient_distribution_in_grams": {
+            "fat": 37.78,
+            "carbohydrate": 191.25,
+            "protein": 148.75
+        },
+        "fiber_quantity_in_grams": 23.8,
+        "patient_infos": {
+            "bowel_movements": {
+                "type": "normal",
+                "details": ""
+            },
+            "medical_history": {
+                "diseases": {
+                    "list": [],
+                    "details": "Epilepsia"
+                },
+                "medications": "Lamitor 100mg"
+            },
+            "dietary_history": {
+                "wake_up_time_24h": "09:00",
+                "bedtime_24h": "03:30",
+                "diet_types": {
+                    "list": [],
+                    "details": "Come de tudo"
+                },
+                "favorite_foods": "Salada, coca cola e arroz de forno",
+                "disliked_foods": "Beringela, chuchu, Jiló, Cogumelo, Rúcula, Almeirão, Figo e Fígado",
+                "food_allergies": {
+                    "list": [],
+                    "details": "Não tem"
+                },
+                "food_intolerances": {
+                    "list": [],
+                    "details": "Nenhuma"
+                },
+                "nutritional_deficiencies": {
+                    "list": [],
+                    "details": "Não tem"
+                },
+                "other_eating_histories": ""
+            },
+            "eating_behaviours": [],
+            "food_diary_history_and_obs": [
+                {
+                    "date": "2026-01-23",
+                    "meals": [
+                        {
+                            "meal_type": "Café da manhã",
+                            "text": "Não toma café da manhã"
+                        },
+                        {
+                            "meal_type": "Almoço",
+                            "text": "Arroz, carne e salada"
+                        },
+                        {
+                            "meal_type": "Lanche da tarde",
+                            "text": "Geralmente nada, quando o faz come alguma fruta ou whey"
+                        },
+                        {
+                            "meal_type": "Lanche pré-treino",
+                            "text": "Costuma fazer esta refeição quando tem treino"
+                        },
+                        {
+                            "meal_type": "Lanche pós-treino",
+                            "text": "Costuma fazer esta refeição quando tem treino"
+                        }
+                    ],
+                    "observations": "No trabalho faz o seu próprio horário, ele não é sempre o mesmo.\nFaz academia de 3 a 5 vezes por semana, das 20horas as 21horas.\n"
+                }
+            ]
+        }
+    },
+    {
+        "patient_name": "Paciente 2",
+        "dee_goal": 1575,
+        "dee_goal_unit": "kcal/24h",
+        "macronutrient_distribution_in_grams": {
+            "fat": 43.75,
+            "carbohydrate": 196.88,
+            "protein": 98.44
+        },
+        "fiber_quantity_in_grams": 22.05,
+        "patient_infos": {
+            "bowel_movements": {
+                "type": "normal",
+                "details": ""
+            },
+            "medical_history": {
+                "diseases": {
+                    "list": [],
+                    "details": "Nenhuma"
+                },
+                "medications": "Não"
+            },
+            "dietary_history": {
+                "wake_up_time_24h": "06:00",
+                "bedtime_24h": "23:30",
+                "diet_types": {
+                    "list": [],
+                    "details": "Come de tudo"
+                },
+                "favorite_foods": "Chocolate",
+                "disliked_foods": "Filé de lagarto bovino\nCação\nCorvina\nFilé de merluza\nPintado\nJiló\nPimentão\nFigo\nMamão\nMelão\nMelancia\nAmeixa",
+                "food_allergies": {
+                    "list": [],
+                    "details": ""
+                },
+                "food_intolerances": {
+                    "list": [],
+                    "details": ""
+                },
+                "nutritional_deficiencies": {
+                    "list": [
+                        "vitamin_d"
+                    ],
+                    "details": "Apenas vitamina D baixa"
+                },
+                "other_eating_histories": ""
+            },
+            "eating_behaviours": [],
+            "food_diary_history_and_obs": [
+                {
+                    "date": "2026-01-23",
+                    "meals": [
+                        {
+                            "meal_type": "Café da manhã",
+                            "text": "café com leite, pão com ovo e requeijão."
+                        },
+                        {
+                            "meal_type": "Lanche da manhã",
+                            "text": "Também faz um lanche da manhã"
+                        },
+                        {
+                            "meal_type": "Almoço",
+                            "text": "arroz, feijão, carne e alguns legumes."
+                        },
+                        {
+                            "meal_type": "Lanche da tarde",
+                            "text": "café com leite novamente e algum bolo."
+                        },
+                        {
+                            "meal_type": "Jantar",
+                            "text": "varia mais, pode ser raiz forte, macaxeira ou inhame, hambúrguer ou pão novamente"
+                        }
+                    ],
+                    "observations": "Trabalho das 08h até 12h em regime presencial.\nAinda não treina, mas gosta de caminhadas e andar de bicicleta no período da tarde."
+                }
+            ]
+        }
+    },
+    {
+        "patient_name": "Paciente 3",
+        "dee_goal": 3000,
+        "dee_goal_unit": "kcal/24h",
+        "macronutrient_distribution_in_grams": {
+            "fat": 83.33,
+            "carbohydrate": 412.5,
+            "protein": 150
+        },
+        "fiber_quantity_in_grams": 42,
+        "patient_infos": {
+            "bowel_movements": {
+                "type": "normal",
+                "details": ""
+            },
+            "medical_history": {
+                "diseases": {
+                    "list": [],
+                    "details": ""
+                },
+                "medications": ""
+            },
+            "dietary_history": {
+                "wake_up_time_24h": "11:00",
+                "bedtime_24h": "00:00",
+                "diet_types": {
+                    "list": [],
+                    "details": ""
+                },
+                "favorite_foods": "",
+                "disliked_foods": "Filé de lagarto bovino\nPintado\nJiló\nPalmito\nTomate\nAcelga\nAgrião\nChicória\nRúcula\nAlmeirão\nCarambola\nFigo\nLaranja\nAmeixa",
+                "food_allergies": {
+                    "list": [],
+                    "details": ""
+                },
+                "food_intolerances": {
+                    "list": [],
+                    "details": ""
+                },
+                "nutritional_deficiencies": {
+                    "list": [],
+                    "details": ""
+                },
+                "other_eating_histories": ""
+            },
+            "eating_behaviours": [],
+            "food_diary_history_and_obs": [
+                {
+                    "date": "2026-01-23",
+                    "meals": [
+                        {
+                            "meal_type": "Café da manhã",
+                            "text": "pão francês com uma fatia de peito de peru e uma fatia de queijo, mas ultimamente quase come nada de café da manhã"
+                        },
+                        {
+                            "meal_type": "Almoço",
+                            "text": "variado, normalmente arroz com alguma proteína como frango, carne, costelinha, peixe, alface de salada mas é bem variado."
+                        },
+                        {
+                            "meal_type": "Lanche da tarde",
+                            "text": "tapioca, ou as vezes nem come, normalmente come após o treino."
+                        },
+                        {
+                            "meal_type": "Lanche pós-treino",
+                            "text": "Come após treinar"
+                        },
+                        {
+                            "meal_type": "Jantar",
+                            "text": "bem variado também, mas é refeição também, normalmente um arroz com alguma carne ou frango, so alguns finais de semana que é uma pizza ou lanche"
+                        }
+                    ],
+                    "observations": "Treina 6 dias na semana, de segunda a sexta às 15h e Sábado às 11h."
+                }
+            ]
+        }
+    },
+    {
+        "patient_name": "Paciente 5",
+        "dee_goal": 2000,
+        "dee_goal_unit": "kcal/24h",
+        "macronutrient_distribution_in_grams": {
+            "fat": 48.89,
+            "carbohydrate": 250,
+            "protein": 140
+        },
+        "fiber_quantity_in_grams": 28,
+        "patient_infos": {
+            "bowel_movements": {
+                "type": "normal",
+                "details": ""
+            },
+            "medical_history": {
+                "diseases": {
+                    "list": [],
+                    "details": ""
+                },
+                "medications": "Losartana 50mg"
+            },
+            "dietary_history": {
+                "wake_up_time_24h": "06:00",
+                "bedtime_24h": "22:00",
+                "diet_types": {
+                    "list": [],
+                    "details": "Come de tudo"
+                },
+                "favorite_foods": "",
+                "disliked_foods": "Jiló\nAlmeirão\nFigado",
+                "food_allergies": {
+                    "list": [],
+                    "details": ""
+                },
+                "food_intolerances": {
+                    "list": [],
+                    "details": ""
+                },
+                "nutritional_deficiencies": {
+                    "list": [],
+                    "details": ""
+                },
+                "other_eating_histories": ""
+            },
+            "eating_behaviours": [],
+            "food_diary_history_and_obs": [
+                {
+                    "date": "2026-01-23",
+                    "meals": [
+                        {
+                            "meal_type": "Café da manhã",
+                            "text": "Ovos mexidos, banana da terra, pão integral"
+                        },
+                        {
+                            "meal_type": "Almoço",
+                            "text": "Feijão, macarrão, arroz e carne"
+                        },
+                        {
+                            "meal_type": "Lanche da tarde",
+                            "text": "Uva as vezes"
+                        },
+                        {
+                            "meal_type": "Jantar",
+                            "text": "Uma raiz e algo com requeijão"
+                        }
+                    ],
+                    "observations": "Trabalha das 08:00 às 17:00"
+                }
+            ]
+        }
+    },
+    {
+        "patient_name": "Paciente 6",
+        "dee_goal": 2500,
+        "dee_goal_unit": "kcal/24h",
+        "macronutrient_distribution_in_grams": {
+            "fat": 48.89,
+            "carbohydrate": 250,
+            "protein": 140
+        },
+        "fiber_quantity_in_grams": 28,
+        "patient_infos": {
+            "bowel_movements": {
+                "type": "constipation",
+                "details": ""
+            },
+            "medical_history": {
+                "diseases": {
+                    "list": [],
+                    "details": ""
+                },
+                "medications": ""
+            },
+            "dietary_history": {
+                "wake_up_time_24h": "06:00",
+                "bedtime_24h": "22:00",
+                "diet_types": {
+                    "list": [],
+                    "details": "Come de tudo"
+                },
+                "favorite_foods": "massa, carne",
+                "disliked_foods": "Figado e Peixe (exceto salmão, bacalhau, atum. pescada)",
+                "food_allergies": {
+                    "list": [],
+                    "details": "amendoim e castanha"
+                },
+                "food_intolerances": {
+                    "list": [],
+                    "details": "intolerancia a lactose"
+                },
+                "nutritional_deficiencies": {
+                    "list": [],
+                    "details": ""
+                },
+                "other_eating_histories": ""
+            },
+            "eating_behaviours": [
+                {"date": "Wed, 26 Nov 2025", "text": "- Tudo igual: \nJejum matinal (perguntar sobre isso ao fds e dias de trabalho em casa)\n- Objetivos pequenos: sem açúcar, sem adoçantes"},
+                {"date": "Mon, 06 Oct 2025", "text": "- "},
+                {"date": "Mon, 18 Aug 2025", "text": "- Uns dias fora: não comer tão bem_ \n- "},
+                {"date": "Tue, 22 Jul 2025", "text": "- Algumas mudanças: \n- "},
+                {"date": "Mon, 02 Jun 2025", "text": "- mais ou menos: \n- "},
+                {"date": "Fri, 11 Apr 2025", "text": "- último m"},
+                {"date": "Fri, 13 Dec 2024", "text": "- Correu bem: \n- Jantares de Natal: \n- "},
+                {"date": "Fri, 13 Dec 2024", "text": "- Fora do normal: \n- 65 kg: \nProzis: \n- 46.7%\n- 34.8% \n\n- PA: mantive: \nAlmoço: mais hidratos -  massa de camarão\nSalada: \n- Bebida Capuccino: \n- 20h00 - 21h00: sem sopa: \n- "},
+                {"date": "Thu, 24 Oct 2024", "text": "- 2 Nada de diferente: \n- Treinos: \nMatido as refeições: \n- + fome durante o dia: \n- Jantar: Alguns hidratos ao jantar: \n- 21h00: \nBeringela recheada com batat \nPudim proteíco - chocolate\n- "},
+                {"date": "Tue, 17 Sep 2024", "text": "- Geral: correram bem: \n-  Panquecas; Tapioca; Bagel; \nAlmoços: Praia\n- Muitos colegas de férias; \n- "},
+                {"date": "Tue, 13 Aug 2024", "text": "- 2ª quinzena de setembro: \n- 3 semanas: atípicas: \n- Chegado mais tarde: ginásio ao fim do dia: \n-  Menos regularidade: \n- 3 dias chega mais tarde: \n- 2 a trabalhar em casa: gerir para o ginásio: \n- Ginásio: 3-4x semana: \n- "},
+                {"date": "Tue, 09 Jul 2024", "text": "- Semanas melhores: e outras piores: \n- Tem sentido mais fome Sopa + queijo fresco\n- Sopa congelada: \n- Salada todos os dias ao jantar -\nPimentos: \n- Mais ou menos: \nFérias - inchaço: aumento\n3L - "},
+                {"date": "Tue, 04 Jun 2024", "text": "- Igual: alguns excessos: \n- Estabilizar - menos progressão\n- PA: Panquecas: quase sempre - aveia e banana \n- Sem lanche da manhã: \n- 3 unidades\n- LTarde - Crepioca com cacau e fruta  - \nSituações pontuais: bolo de caneca - Bagel Queijo fresco e Philadelphia sem ovo mexido; manteiga \nIogurte com granola + fruta \nJantar: Sopa\n\n- Salada com panados de frango - alface, tomate cherry; quinoa - \n- sem tremoços\n\nExercício igual: 1x semana - \nMínimo 1.5L (água: \n2L no treino: \n- "},
+                {"date": "Thu, 09 May 2024", "text": "- Já correu melhor: \n- Alguns excessos: fim de semana; \n- Almoçar: \n- 2 lanches da manhã: 07h manhã PA: \n- Sem muita fome à tarde; Sem LT: \n- Jantar: \nGelado \nsopa + queijo \n- Lanche da tarde: \n- Pão com manteiga  : Tapioca ou bolo doce; \n- 2L Ginásio: \n- 4x semana ao ginásio: \n\nPA: Mantém: "},
+                {"date": "Tue, 09 Apr 2024", "text": "4 dias em Espanha : alguns abusos: mesmo peso; \n- 1 mês atrás - ++ inclinação: \n3x por semana: Ginásio: \n- Sentido bem: \nArroz de pato: \nAlmoço depende: sobra:  Salada sempre ao almoço:\n- Fatia de pão: Natural de soja; Pingo Doce; \nMuffins de aveia - iogurte \n17h00 - \n18h00: Pudim proteíco chocolate ; gelatina "},
+                {"date": "Fri, 01 Mar 2024", "text": "- Continuar a perder peso: \n- 3 dias; \n- tem corrido bem: \n+ cansaço: \n- Sopa; \n- Almoço: hidratos: + atum Sopa + queijo fresco: \n- "},
+                {"date": "Tue, 30 Jan 2024", "text": "- Pior do que previa; \n- Foi fácil a nível de alimentação; \n1/2 semana\n- Crepioca: doce; \n- ginásio: Avaliação física: "},
+                {"date": "Tue, 19 Dec 2023", "text": "- Alguns jantares: francesinha: \n- Manter; \n- Ginásio: Menos frequência; \n- Responde de outra forma \n- Poucas coisas doces de natal; \n- Pão de ló: \nsonhos, filhoses; \n- Bacalhau; \n\n- bolo de caneca: \n- Sem o lanche da manhã; \n- Quase a sopa  4 dias;\n- "},
+                {"date": "Tue, 28 Nov 2023", "text": "- Aniversário: correu pior; \nSopa - semana; \n- Habituar a alimentação:\n- 1 vezes; \n-2 vezes apenas \n\nPA: Habitual Panquecas - amendoins; \n- Bebida vegetal: \nAlmoço: Arroz + carne picada + alface; \nLT: Bolo da caneca -  maçã - \nIogurte Go active + 1/2 pudim chocolate + 1/2 \n- 20h00 \n21h00: Sopa + Asas de frango na air fyer + arroz\n- muito cheia à noite - \nTreino: Sem ser o plano: \n- água; \n\n- Jantares - 2 previsto - Natal/Fim de ano"},
+                {"date": "Mon, 23 Oct 2023", "text": "- Bem;\n- minumo 3x semana; \n- 4x/semana \n\n\nTreino: lanche da tarde: 17h00: \n- Treino: \n\nJantar: Sem muito aumento;\nDepois das 20h30/21h00: \n\nPA: Panquecas de aveia + Leite com café + frutos vermelhos\n\nALmoço: - Iogurte líquido \n\n13h30 - 1 lasanha adaptada + massa - alho francês - molho de soja ; \n\n- LT: Bolo da caneca: \nSaciada: 2 dias treino de pernas + 1 vez braços + \n- \n\nJantar: Sopa \n\n- Legumes\n- "},
+                {"date": "Mon, 18 Sep 2023", "text": "- de férias: \n- Menos inchada e cheia depois das refeições;\n- 2L água; \n- fim de semana: \n- Fome_ Antes do lanche da manhã - \n- 12h00: lanche - 1 babybel + 1 tosta; \n- Legumes: alface: maior quantidade; \n- Legumes salteados; Brócolos;\n- LT: cumprir; \nfds - Sem fazer; \nBarra: \n\nJantar: massa + atum + \n- PA: Fim de semana: panquecas a mais \n Panquecas - quinta-feira: 3x semana; \n- Sem iogurte de manhã; 2 panquecas +  fruta(kiqi + banana + framboesas) - sobremesa\n\n- "},
+                {"date": "Mon, 14 Aug 2023", "text": "- há 5 anos começou a engordar - mudança de pílula; \nAnálises\nHá 2 anos com nutricionista (Covid - 19) - Não foi suficiente "}
+            ],
+            "food_diary_history_and_obs": [
+                {
+                    "date": "2026-01-23",
+                    "meals": [
+                        {
+                            "meal_type": "Café da manhã",
+                            "text": "Ovos mexidos, banana da terra, pão integral"
+                        },
+                        {
+                            "meal_type": "Almoço",
+                            "text": "Feijão, macarrão, arroz e carne"
+                        },
+                        {
+                            "meal_type": "Lanche da tarde",
+                            "text": "Uva as vezes"
+                        },
+                        {
+                            "meal_type": "Jantar",
+                            "text": "Uma raiz e algo com requeijão"
+                        }
+                    ],
+                    "observations": "Trabalha das 08:00 às 17:00, treina às 18:00"
+                }
+            ]
+        }
+    }
+]
