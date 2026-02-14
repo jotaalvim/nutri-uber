@@ -7,6 +7,7 @@ services:
     environment:
       - RAILS_ENV=production
       - DATABASE_PATH=/app/data/nutri_dashboard.db
+      - FOOD_FINDER_URL=http://host.docker.internal:5001
       - SECRET_KEY_BASE=nutri_dashboard_prod_secret_key_base_at_least_64_bytes_long_for_cookie_signing_12345
       - RAILS_MASTER_KEY=45d872275c343156907d96a4f3c4ccf1
     volumes:

@@ -12,4 +12,7 @@ Rails.application.routes.draw do
   # Defines the root path route ("/")
   root "dashboard#index"
   get "dashboard", to: "dashboard#index", as: :dashboard
+  get "find_food", to: "dashboard#find_food", as: :find_food
+  get "warm_cache", to: "dashboard#warm_cache", as: :warm_cache
+  get "cached_food", to: "dashboard#cached_food", as: :cached_food
 end

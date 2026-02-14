@@ -127,6 +127,29 @@
       </section>
     </div>
 
+    <%# Find healthy food - Uber Eats integration %>
+    <section class="rounded-2xl bg-white border border-stone-200/80 shadow-sm p-6 sm:p-8" id="food-finder-section">
+      <h2 class="font-display text-lg font-semibold text-stone-800 mb-4 flex items-center gap-2">
+        <span aria-hidden="true">🥡</span>
+        Find healthy food (Uber Eats)
+      </h2>
+      <p class="text-sm text-stone-600 mb-4">
+        Scrapes healthy restaurants in Braga and filters by this patient's dietary constraints (allergies, dislikes, favorites).
+      </p>
+      <button type="button"
+        data-patient-id="<%= @selected_patient.id %>"
+        data-find-food-trigger
+        class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium text-sm bg-emerald-600 text-white hover:bg-emerald-700 transition-colors shadow-md disabled:opacity-50 disabled:cursor-not-allowed">
+        <span data-find-food-spinner class="hidden">⏳</span>
+        <span data-find-food-label>Find food for <%= @selected_patient.patient_name %></span>
+      </button>
+      <div data-find-food-results class="mt-6 hidden">
+        <p class="text-sm font-medium text-stone-700 mb-3" data-find-food-count></p>
+        <div data-find-food-list class="flex gap-4 overflow-x-auto pb-4 -mx-1 scroll-smooth snap-x snap-mandatory" style="scrollbar-width: thin;"></div>
+      </div>
+      <div data-find-food-error class="mt-4 hidden text-sm text-red-600"></div>
+    </section>
+
     <% diary = @selected_patient.food_diary %>
     <section class="rounded-2xl bg-white border border-stone-200/80 shadow-sm p-6 sm:p-8">
       <h2 class="font-display text-lg font-semibold text-stone-800 mb-4 flex items-center gap-2">
@@ -159,6 +182,106 @@
         <p class="text-stone-500 text-sm py-4">No food diary entries yet.</p>
       <% end %>
     </section>
+    <%= content_for :head do %>
+      <script>
+        document.addEventListener("DOMContentLoaded", () => {
+          const btn = document.querySelector("[data-find-food-trigger]");
+          if (!btn) return;
+          const patientId = btn.dataset.patientId;
+          const resultsEl = document.querySelector("[data-find-food-results]");
+          const listEl = document.querySelector("[data-find-food-list]");
+          const countEl = document.querySelector("[data-find-food-count]");
+          const errorEl = document.querySelector("[data-find-food-error]");
+
+          function shuffle(arr) {
+            const a = [...arr];
+            for (let i = a.length - 1; i > 0; i--) {
+              const j = Math.floor(Math.random() * (i + 1));
+              [a[i], a[j]] = [a[j], a[i]];
+            }
+            return a;
+          }
+
+          function renderResults(data) {
+            const items = shuffle(data.items || []).slice(0, 15);
+            const cached = data.from_cache ? " (ready to order)" : "";
+            countEl.textContent = `Found ${data.count} items for ${data.patient}${cached}`;
+            listEl.innerHTML = items.map(item => {
+              const img = item.image_url || "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='280' height='160' fill='%23f5f5f4'%3E%3Crect width='280' height='160' fill='%23e7e5e4'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%23a8a29e' font-size='14'%3E🥗%3C/text%3E%3C/svg%3E";
+              const macros = item.macronutrient_distribution_in_grams || {};
+              const macroStr = [macros.protein, macros.carbohydrate, macros.fat].some(Boolean)
+                ? `P ${macros.protein || "—"}g · C ${macros.carbohydrate || "—"}g · F ${macros.fat || "—"}g`
+                : "Nutrition varies by portion";
+              return `
+              <div class="shrink-0 w-72 snap-center rounded-2xl overflow-hidden bg-white border border-stone-200/80 shadow-md hover:shadow-lg transition-shadow flex flex-col">
+                <a href="${escapeHtml(item.restaurant_url)}" target="_blank" rel="noopener" class="block">
+                  <div class="aspect-[7/4] bg-stone-100 overflow-hidden">
+                    <img src="${escapeHtml(img)}" alt="${escapeHtml(item.name)}" class="w-full h-full object-cover" loading="lazy" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27280%27 height=%27160%27%3E%3Crect fill=%27%23e7e5e4%27 width=%27280%27 height=%27160%27/%3E%3Ctext x=%2750%25%27 y=%2750%25%27 dominant-baseline=%27middle%27 text-anchor=%27middle%27 fill=%27%23a8a29e%27%3E🥗%3C/text%3E%3C/svg%3E'"/>
+                  </div>
+                  <div class="p-4 flex flex-col flex-1">
+                    <h3 class="font-display font-semibold text-stone-800 text-lg mb-1">${escapeHtml(item.name)}</h3>
+                    <p class="text-xs text-stone-500 mb-2">${escapeHtml(item.restaurant)}</p>
+                    ${(item.description || "").trim() ? `<p class="text-sm text-stone-600 flex-1 line-clamp-2 mb-3">${escapeHtml(item.description)}</p>` : ""}
+                    <div class="flex items-center gap-2 text-xs text-stone-500 mb-3">
+                      <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-amber-100 text-amber-800">🌾 ${escapeHtml(macroStr)}</span>
+                    </div>
+                    <div class="flex items-center justify-between mt-auto">
+                      <span class="text-xl font-bold text-stone-800">${escapeHtml(item.price || "—")}</span>
+                      <span class="inline-flex items-center gap-2 px-4 py-2 rounded-xl font-medium text-sm bg-emerald-600 text-white hover:bg-emerald-700 transition-colors">
+                        Order on Uber Eats →
+                      </span>
+                    </div>
+                  </div>
+                </a>
+              </div>
+            `}).join("");
+            resultsEl?.classList.remove("hidden");
+          }
+
+          // Show cached results immediately on load (no click needed)
+          fetch(`/cached_food?patient_id=${patientId}`)
+            .then(res => res.ok ? res.json() : Promise.reject())
+            .then(data => { renderResults(data); })
+            .catch(() => {})
+            .finally(() => {
+              // Pre-warm for next time
+              fetch(`/warm_cache?patient_id=${patientId}&city=braga-norte`).catch(() => {});
+            });
+
+          btn.addEventListener("click", async () => {
+            const spinner = document.querySelector("[data-find-food-spinner]");
+            const label = document.querySelector("[data-find-food-label]");
+            btn.disabled = true;
+            spinner?.classList.remove("hidden");
+            label.textContent = "Checking…";
+            resultsEl?.classList.add("hidden");
+            errorEl?.classList.add("hidden");
+            errorEl.textContent = "";
+            try {
+              const res = await fetch(`/find_food?patient_id=${patientId}`);
+              const data = await res.json();
+              if (!res.ok) {
+                const msg = data.error || "Request failed";
+                throw new Error(data.hint ? `${msg}\n\n${data.hint}` : msg);
+              }
+              renderResults(data);
+            } catch (err) {
+              errorEl.textContent = err.message;
+              errorEl?.classList.remove("hidden");
+            } finally {
+              btn.disabled = false;
+              spinner?.classList.add("hidden");
+              label.textContent = "Find food for <%= @selected_patient.patient_name %>";
+            }
+          });
+        });
+        function escapeHtml(s) {
+          const div = document.createElement("div");
+          div.textContent = s || "";
+          return div.innerHTML;
+        }
+      </script>
+    <% end %>
   <% else %>
     <div class="rounded-2xl bg-white border border-stone-200/80 shadow-sm p-12 text-center">
       <p class="text-5xl mb-4" aria-hidden="true">🥗</p>
