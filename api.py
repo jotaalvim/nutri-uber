@@ -22,7 +22,6 @@ from uber_eats_integration import add_basket_to_cart
 from food_finder import (
     find_food_for_patient,
     find_grocery_basket_for_patient,
-    fetch_nutrition_detail,
     fetch_uber_eats_images_for_items,
     load_all_menus_items,
     load_continente_grocery_from_all_menus,
@@ -313,6 +312,7 @@ def warm_cache():
         grocery = get_grocery(patient_id, city) if patient_id else None
 
         def _warm_nutrition():
+            from nutrition_local_db import get_nutrition_for_serving
             items = list((cached.get("items") or [])[:6]) + list((grocery.get("items") or [])[:4]) if cached or grocery else []
             for item in items[:10]:
                 name = (item.get("name") or "").strip()
@@ -321,9 +321,7 @@ def warm_cache():
                 if not name or get_nutrition(name, desc, img):
                     continue
                 try:
-                    d = estimate_calories_with_llm(name, desc, img) if (img or desc) else None
-                    if not d or not d.get("nutriments"):
-                        d = fetch_nutrition_detail(name)
+                    d = get_nutrition_for_serving(name, restaurant=item.get("restaurant"))
                     if d and d.get("nutriments"):
                         set_nutrition(name, d, desc, img)
                 except Exception:
@@ -455,34 +453,6 @@ def baskets():
         return jsonify({"error": str(e)}), 500
 
 
-def _generic_nutrition_estimate(food_name: str) -> dict | None:
-    """Fallback: rough estimates for common food types when OFF/LLM fail."""
-    name_lower = (food_name or "").lower()
-    # Typical per-portion estimates (kcal, protein, carb, fat)
-    estimates = [
-        (["salada", "salad"], {"energy_kcal": 120, "protein": 5, "carbohydrate": 12, "fat": 6}),
-        (["sandes", "sandwich", "sanduíche", "tosta"], {"energy_kcal": 350, "protein": 15, "carbohydrate": 38, "fat": 14}),
-        (["frango", "chicken", "peito"], {"energy_kcal": 165, "protein": 31, "carbohydrate": 0, "fat": 3.6}),
-        (["arroz", "rice"], {"energy_kcal": 130, "protein": 2.6, "carbohydrate": 28, "fat": 0.3}),
-        (["massa", "pasta", "espaguete"], {"energy_kcal": 220, "protein": 8, "carbohydrate": 43, "fat": 1}),
-        (["atum", "tuna"], {"energy_kcal": 130, "protein": 28, "carbohydrate": 0, "fat": 1}),
-        (["queijo", "cheese"], {"energy_kcal": 110, "protein": 7, "carbohydrate": 0.5, "fat": 9}),
-        (["ovos", "egg", "ovo"], {"energy_kcal": 155, "protein": 13, "carbohydrate": 1, "fat": 11}),
-        (["sopa", "soup"], {"energy_kcal": 80, "protein": 4, "carbohydrate": 10, "fat": 2}),
-        (["iogurte", "yogurt"], {"energy_kcal": 100, "protein": 6, "carbohydrate": 12, "fat": 2.5}),
-        (["bowl", "house"], {"energy_kcal": 400, "protein": 20, "carbohydrate": 45, "fat": 15}),
-    ]
-    for keywords, nut in estimates:
-        if any(kw in name_lower for kw in keywords):
-            return {
-                "product_name": food_name,
-                "nutriments": nut,
-                "source": "generic_estimate",
-                "notes": "Rough estimate; use Refresh for more accurate data",
-            }
-    return None
-
-
 @app.route("/nutrition", methods=["GET", "POST"])
 def nutrition():
     """
@@ -510,22 +480,84 @@ def nutrition():
         if cached:
             return jsonify(cached)
 
+        from nutrition_local_db import get_nutrition_for_serving
+
         detail = None
-        if image_url or description:
+        if force_refresh:
             detail = estimate_calories_with_llm(
                 food_name=q,
                 description=description,
                 image_url=image_url,
             )
         if not detail or not detail.get("nutriments"):
-            detail = fetch_nutrition_detail(q)
+            detail = get_nutrition_for_serving(q)
         if not detail or not detail.get("nutriments"):
-            detail = _generic_nutrition_estimate(q)
-        if not detail:
-            return jsonify({"product_name": q, "nutriments": {}, "source": "openfoodfacts"})
+            return jsonify({"product_name": q, "nutriments": {}, "source": "local_db"})
 
         set_nutrition(q, detail, description, image_url or "")
         return jsonify(detail)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/chat", methods=["POST"])
+def chat():
+    """
+    Chat with the nutrition assistant LLM.
+    POST /chat with JSON: { "messages": [...], "food_items": [{ "name", "restaurant", "price", "macronutrient_distribution_in_grams", "basket_role" }] }
+    When food_items are provided, the assistant recommends from that list. Returns: { "message": "..." }
+    """
+    try:
+        data = request.get_json() or {}
+        messages = data.get("messages") or []
+        if not isinstance(messages, list):
+            return jsonify({"error": "messages must be an array"}), 400
+
+        api_key = os.environ.get("OPENAI_API_KEY", "").strip()
+        if not api_key:
+            return jsonify({"error": "OPENAI_API_KEY not configured"}), 503
+
+        try:
+            from openai import OpenAI
+            client = OpenAI(api_key=api_key)
+        except ImportError:
+            return jsonify({"error": "openai package not installed"}), 503
+
+        food_items = data.get("food_items") or []
+        if isinstance(food_items, list) and food_items:
+            def _fmt(it):
+                m = it.get("macronutrient_distribution_in_grams") or {}
+                role = (" | " + (it.get("basket_role") or "")) if it.get("basket_role") else ""
+                return f"- {it.get('name', '?')} @ {it.get('restaurant', '?')} | {it.get('price', '')} | P:{m.get('protein', '?')}g C:{m.get('carbohydrate', '?')}g F:{m.get('fat', '?')}g{role}"
+            items_text = "\n".join(_fmt(it) for it in food_items[:30])
+            system_prompt = f"""You are a friendly nutrition assistant for the Nutri Dashboard app. The user sees food cards they can order. Your job is to RECOMMEND specific items from the list below when they ask what to eat, what to order, or for suggestions.
+
+AVAILABLE FOOD ITEMS (recommend ONLY from this list):
+{items_text}
+
+When the user asks for recommendations, picks, suggestions, or "what should I order/eat", suggest 1–3 specific items from the list above by name and restaurant. Explain briefly why they fit (e.g. macros, role). If they ask about nutrition in general, answer that too. Keep answers concise. Use metric units (grams, kcal)."""
+        else:
+            system_prompt = """You are a friendly nutrition assistant for the Nutri Dashboard app. Help users with meal planning, macros, and healthy eating. No food cards are loaded yet—suggest they click "Find food" first to see orderable items, or answer general nutrition questions. Keep answers concise. Use metric units (grams, kcal)."""
+
+        formatted = [{"role": "system", "content": system_prompt}]
+        for m in messages[-20:]:  # last 20 messages for context
+            role = (m.get("role") or "user").lower()
+            if role not in ("user", "assistant", "system"):
+                role = "user"
+            content = (m.get("content") or "").strip()
+            if content:
+                formatted.append({"role": role, "content": content})
+
+        if not any(m.get("role") == "user" for m in formatted[1:]):
+            return jsonify({"error": "At least one user message required"}), 400
+
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=formatted,
+            max_tokens=1024,
+        )
+        reply = (response.choices[0].message.content or "").strip()
+        return jsonify({"message": reply})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

@@ -225,29 +225,16 @@ def fetch_nutrition_estimate(food_name: str) -> dict[str, float] | None:
     }
 
 
-_GENERIC_NUTRITION: list[tuple[list[str], dict]] = [
-    (["salada", "salad"], {"energy_kcal": 120, "protein": 5, "carbohydrate": 12, "fat": 6}),
-    (["sandes", "sandwich", "sanduíche", "tosta"], {"energy_kcal": 350, "protein": 15, "carbohydrate": 38, "fat": 14}),
-    (["frango", "chicken", "peito"], {"energy_kcal": 165, "protein": 31, "carbohydrate": 0, "fat": 3.6}),
-    (["arroz", "rice"], {"energy_kcal": 130, "protein": 2.6, "carbohydrate": 28, "fat": 0.3}),
-    (["massa", "pasta", "espaguete"], {"energy_kcal": 220, "protein": 8, "carbohydrate": 43, "fat": 1}),
-    (["atum", "tuna"], {"energy_kcal": 130, "protein": 28, "carbohydrate": 0, "fat": 1}),
-    (["queijo", "cheese"], {"energy_kcal": 110, "protein": 7, "carbohydrate": 0.5, "fat": 9}),
-    (["ovos", "egg", "ovo"], {"energy_kcal": 155, "protein": 13, "carbohydrate": 1, "fat": 11}),
-    (["sopa", "soup"], {"energy_kcal": 80, "protein": 4, "carbohydrate": 10, "fat": 2}),
-    (["iogurte", "yogurt"], {"energy_kcal": 100, "protein": 6, "carbohydrate": 12, "fat": 2.5}),
-    (["bowl", "house"], {"energy_kcal": 400, "protein": 20, "carbohydrate": 45, "fat": 15}),
-]
-
-
 def enrich_item_with_nutrition(item: dict[str, Any]) -> None:
     """Add full nutriments (energy_kcal, protein, carbs, fat, etc.) to item for instant display."""
     if item.get("nutriments"):
         return
-    detail = fetch_nutrition_detail(item.get("name", ""))
+    from nutrition_local_db import get_nutrition_for_serving
+
+    detail = get_nutrition_for_serving(item.get("name", ""), restaurant=item.get("restaurant"))
     if detail and detail.get("nutriments"):
         item["nutriments"] = detail["nutriments"]
-        item["nutrition_source"] = detail.get("source", "openfoodfacts")
+        item["nutrition_source"] = detail.get("source", "local_db")
         nut = detail["nutriments"]
         if not item.get("macronutrient_distribution_in_grams"):
             item["macronutrient_distribution_in_grams"] = {
@@ -256,18 +243,6 @@ def enrich_item_with_nutrition(item: dict[str, Any]) -> None:
                 "fat": nut.get("fat"),
             }
         return
-    name_lower = (item.get("name") or "").lower()
-    for keywords, nut in _GENERIC_NUTRITION:
-        if any(kw in name_lower for kw in keywords):
-            item["nutriments"] = nut
-            item["nutrition_source"] = "generic_estimate"
-            if not item.get("macronutrient_distribution_in_grams"):
-                item["macronutrient_distribution_in_grams"] = {
-                    "protein": nut.get("protein"),
-                    "carbohydrate": nut.get("carbohydrate"),
-                    "fat": nut.get("fat"),
-                }
-            return
 
 
 def enrich_items_parallel(items: list[dict[str, Any]], max_workers: int = 8) -> None:

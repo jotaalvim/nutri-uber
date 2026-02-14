@@ -4,7 +4,7 @@ require "net/http"
 require "json"
 
 class DashboardController < ApplicationController
-  skip_before_action :verify_authenticity_token, only: [:nutrition, :add_to_food_log]
+  skip_before_action :verify_authenticity_token, only: [:nutrition, :add_to_food_log, :chat]
 
   FOOD_FINDER_URL = ENV.fetch("FOOD_FINDER_URL", "http://127.0.0.1:5001")
 
@@ -346,6 +346,39 @@ class DashboardController < ApplicationController
     end
   rescue Errno::ECONNREFUSED, SocketError
     render json: { error: "Food finder API not reachable" }, status: :service_unavailable
+  rescue StandardError => e
+    render json: { error: e.message }, status: :internal_server_error
+  end
+
+  def chat
+    messages = params[:messages] || []
+    food_items = params[:food_items] || []
+    return render json: { error: "messages required" }, status: :bad_request if messages.blank?
+
+    uri = URI("#{FOOD_FINDER_URL}/chat")
+    http = Net::HTTP.new(uri.host, uri.port)
+    http.use_ssl = uri.scheme == "https"
+    http.open_timeout = 3
+    http.read_timeout = 60
+
+    req = Net::HTTP::Post.new(uri)
+    req["Content-Type"] = "application/json"
+    req.body = { messages: messages, food_items: food_items }.to_json
+
+    response = http.request(req)
+    body = begin
+      JSON.parse(response.body)
+    rescue JSON::ParserError
+      { "error" => "Chat API returned invalid response. Rebuild the API image: docker-compose build nutri-api --no-cache" }
+    end
+
+    if response.is_a?(Net::HTTPSuccess)
+      render json: body
+    else
+      render json: body, status: response.code.to_i
+    end
+  rescue Errno::ECONNREFUSED, SocketError
+    render json: { error: "Food finder API not reachable at #{FOOD_FINDER_URL}" }, status: :service_unavailable
   rescue StandardError => e
     render json: { error: e.message }, status: :internal_server_error
   end

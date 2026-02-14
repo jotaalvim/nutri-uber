@@ -20,4 +20,5 @@ Rails.application.routes.draw do
   post "add_to_food_log", to: "dashboard#add_to_food_log", as: :add_to_food_log
   post "add_basket_to_cart", to: "dashboard#add_basket_to_cart", as: :add_basket_to_cart
   match "nutrition", to: "dashboard#nutrition", as: :nutrition, via: [:get, :post]
+  post "chat", to: "dashboard#chat", as: :chat
 end

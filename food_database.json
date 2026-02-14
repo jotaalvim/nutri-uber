@@ -380,7 +380,7 @@
     },
     {
       "name": "beef",
-      "keywords": ["beef", "carne", "carne vermelha"],
+      "keywords": ["beef", "carne", "carne vermelha", "bife", "steak"],
       "energy_kcal_100g": 250,
       "proteins_100g": 26,
       "fat_100g": 15,
@@ -944,6 +944,135 @@
       "fat_100g": 50,
       "carbohydrates_100g": 20,
       "fiber_100g": 6
+    }
+  ],
+  "known_dishes": [
+    {
+      "keywords": ["green bowl", "playa"],
+      "match_all": true,
+      "product_name": "Green Bowl (Playa Bowls)",
+      "energy_kcal": 750,
+      "protein": 13.1,
+      "carbohydrate": 112.5,
+      "fat": 28.3,
+      "fiber": 8
+    },
+    {
+      "keywords": ["pokebowl", "poke bowl", "poke", "poké"],
+      "product_name": "Poke Bowl",
+      "energy_kcal": 550,
+      "protein": 28,
+      "carbohydrate": 55,
+      "fat": 22,
+      "fiber": 4
+    },
+    {
+      "keywords": ["salada", "salad"],
+      "product_name": "Salad",
+      "energy_kcal": 120,
+      "protein": 5,
+      "carbohydrate": 12,
+      "fat": 6,
+      "fiber": 3
+    },
+    {
+      "keywords": ["sandes", "sandwich", "sanduíche", "tosta"],
+      "product_name": "Sandwich",
+      "energy_kcal": 350,
+      "protein": 15,
+      "carbohydrate": 38,
+      "fat": 14,
+      "fiber": 2
+    },
+    {
+      "keywords": ["sopa", "soup"],
+      "product_name": "Soup",
+      "energy_kcal": 80,
+      "protein": 4,
+      "carbohydrate": 10,
+      "fat": 2,
+      "fiber": 1
+    },
+    {
+      "keywords": ["iogurte", "yogurt", "yoghurt"],
+      "product_name": "Yogurt",
+      "energy_kcal": 100,
+      "protein": 6,
+      "carbohydrate": 12,
+      "fat": 2.5,
+      "fiber": 0
+    },
+    {
+      "keywords": ["açaí", "acai", "acai bowl"],
+      "product_name": "Açaí Bowl",
+      "energy_kcal": 450,
+      "protein": 6,
+      "carbohydrate": 65,
+      "fat": 18,
+      "fiber": 6
+    },
+    {
+      "keywords": ["bowl", "house bowl"],
+      "product_name": "Bowl",
+      "energy_kcal": 400,
+      "protein": 20,
+      "carbohydrate": 45,
+      "fat": 15,
+      "fiber": 5
+    },
+    {
+      "keywords": ["frango", "chicken", "peito de frango"],
+      "product_name": "Chicken (portion)",
+      "energy_kcal": 248,
+      "protein": 47,
+      "carbohydrate": 0,
+      "fat": 5.4,
+      "fiber": 0
+    },
+    {
+      "keywords": ["arroz", "rice"],
+      "product_name": "Rice (portion)",
+      "energy_kcal": 195,
+      "protein": 4,
+      "carbohydrate": 42,
+      "fat": 0.5,
+      "fiber": 0.6
+    },
+    {
+      "keywords": ["massa", "pasta", "espaguete", "macarrão"],
+      "product_name": "Pasta (portion)",
+      "energy_kcal": 330,
+      "protein": 12,
+      "carbohydrate": 65,
+      "fat": 1.5,
+      "fiber": 2.7
+    },
+    {
+      "keywords": ["atum", "tuna"],
+      "product_name": "Tuna (portion)",
+      "energy_kcal": 195,
+      "protein": 42,
+      "carbohydrate": 0,
+      "fat": 1.5,
+      "fiber": 0
+    },
+    {
+      "keywords": ["queijo", "cheese"],
+      "product_name": "Cheese (portion)",
+      "energy_kcal": 165,
+      "protein": 10.5,
+      "carbohydrate": 0.8,
+      "fat": 13.5,
+      "fiber": 0
+    },
+    {
+      "keywords": ["ovos", "egg", "ovo"],
+      "product_name": "Eggs (portion)",
+      "energy_kcal": 155,
+      "protein": 13,
+      "carbohydrate": 1,
+      "fat": 11,
+      "fiber": 0
     }
   ]
 }
