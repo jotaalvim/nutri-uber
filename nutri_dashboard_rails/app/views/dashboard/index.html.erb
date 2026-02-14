@@ -560,12 +560,48 @@
             resultsEl?.classList.remove("hidden");
 
             listEl.querySelectorAll("[data-nutrition-trigger]").forEach(btn => {
-              btn.addEventListener("click", (e) => {
+              btn.addEventListener("click", async (e) => {
                 e.preventDefault();
                 e.stopPropagation();
                 const card = btn.closest("[data-item-name]");
                 const overlay = card?.querySelector("[data-nutrition-overlay]");
+                const panel = card?.querySelector("[data-nutrition-panel]");
+                const wasHidden = overlay?.classList.contains("hidden");
                 if (overlay) overlay.classList.toggle("hidden");
+                if (!wasHidden || !panel || !card) return;
+                if (panel.dataset.needsFetch === "1") {
+                  const name = card.dataset.itemName || "";
+                  if (!name) return;
+                  panel.innerHTML = '<div class="p-6 text-center"><p class="text-amber-600 text-sm animate-pulse">Estimating with AI…</p><p class="text-xs text-stone-500 mt-2">Using vision model for accurate nutrition</p></div>';
+                  try {
+                    const desc = (card.dataset.itemDescription || "").trim();
+                    const imgUrl = (card.dataset.itemImageUrl || "").trim();
+                    let res;
+                    if (imgUrl || desc) {
+                      res = await fetch("/nutrition", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json", "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]')?.content || "", "Accept": "application/json" },
+                        body: JSON.stringify({ q: name, description: desc, image_url: imgUrl, refresh: true })
+                      });
+                    } else {
+                      res = await fetch("/nutrition?q=" + encodeURIComponent(name) + "&refresh=1");
+                    }
+                    const data = await res.json();
+                    if (data.error) {
+                      panel.innerHTML = '<div class="p-6 space-y-3"><div class="flex flex-col items-center gap-2 py-4 rounded-lg bg-stone-50 border border-stone-200/60"><span class="text-4xl opacity-50" aria-hidden="true">📊</span><p class="text-sm text-stone-500">' + escapeHtml(data.error) + '</p><button type="button" data-refresh-nutrition class="mt-1 px-3 py-1.5 rounded-lg text-xs font-medium text-stone-600 bg-white border border-stone-200 hover:bg-stone-50 transition-colors">Refresh values</button></div></div>';
+                      return;
+                    }
+                    const nut = data.nutriments || {};
+                    panel.innerHTML = buildNutritionPanelHtml(nut, data);
+                    panel.dataset.loaded = "1";
+                    panel.removeAttribute("data-needs-fetch");
+                    card.dataset.itemNutrition = JSON.stringify(nut);
+                    card.dataset.itemNutritionSource = data.source || "";
+                  } catch (err) {
+                    panel.innerHTML = '<div class="p-6 space-y-3"><div class="flex flex-col items-center gap-2 py-4 rounded-lg bg-stone-50 border border-stone-200/60"><span class="text-4xl opacity-50" aria-hidden="true">📊</span><p class="text-sm text-stone-500">Failed to load</p><button type="button" data-refresh-nutrition class="mt-1 px-3 py-1.5 rounded-lg text-xs font-medium text-stone-600 bg-white border border-stone-200 hover:bg-stone-50 transition-colors">Refresh values</button></div></div>';
+                    panel.removeAttribute("data-needs-fetch");
+                  }
+                }
               });
             });
             listEl.querySelectorAll("[data-nutrition-close]").forEach(btn => {
@@ -575,40 +611,6 @@
                 const overlay = btn.closest("[data-nutrition-overlay]");
                 if (overlay) overlay.classList.add("hidden");
               });
-            });
-
-            listEl.querySelectorAll("[data-nutrition-panel][data-needs-fetch='1']").forEach(async (panel) => {
-              const card = panel.closest("[data-item-name]");
-              if (!card) return;
-              const name = card.dataset.itemName || "";
-              try {
-                const desc = (card.dataset.itemDescription || "").trim();
-                const imgUrl = (card.dataset.itemImageUrl || "").trim();
-                let res;
-                if (imgUrl || desc) {
-                  res = await fetch("/nutrition", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json", "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]')?.content || "", "Accept": "application/json" },
-                    body: JSON.stringify({ q: name, description: desc, image_url: imgUrl })
-                  });
-                } else {
-                  res = await fetch("/nutrition?q=" + encodeURIComponent(name));
-                }
-                const data = await res.json();
-                if (data.error) {
-                  panel.innerHTML = '<div class="p-6 space-y-3"><div class="flex flex-col items-center gap-2 py-4 rounded-lg bg-stone-50 border border-stone-200/60"><span class="text-4xl opacity-50" aria-hidden="true">📊</span><p class="text-sm text-stone-500">' + escapeHtml(data.error) + '</p><button type="button" data-refresh-nutrition class="mt-1 px-3 py-1.5 rounded-lg text-xs font-medium text-stone-600 bg-white border border-stone-200 hover:bg-stone-50 transition-colors">Refresh values</button></div></div>';
-                  return;
-                }
-                const nut = data.nutriments || {};
-                panel.innerHTML = buildNutritionPanelHtml(nut, data);
-                panel.dataset.loaded = "1";
-                panel.removeAttribute("data-needs-fetch");
-                card.dataset.itemNutrition = JSON.stringify(nut);
-                card.dataset.itemNutritionSource = data.source || "";
-              } catch (err) {
-                panel.innerHTML = '<div class="p-6 space-y-3"><div class="flex flex-col items-center gap-2 py-4 rounded-lg bg-stone-50 border border-stone-200/60"><span class="text-4xl opacity-50" aria-hidden="true">📊</span><p class="text-sm text-stone-500">Failed to load</p><button type="button" data-refresh-nutrition class="mt-1 px-3 py-1.5 rounded-lg text-xs font-medium text-stone-600 bg-white border border-stone-200 hover:bg-stone-50 transition-colors">Refresh values</button></div></div>';
-                panel.removeAttribute("data-needs-fetch");
-              }
             });
           }
 
