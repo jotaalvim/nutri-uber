@@ -195,8 +195,13 @@
               </div>
               <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 <% (entry["meals"] || []).each do |meal| %>
-                  <div class="rounded-lg bg-white border border-stone-200/60 p-3 shadow-sm">
-                    <p class="text-xs font-medium text-amber-600 uppercase tracking-wide mb-1"><%= meal["meal_type"] %></p>
+                  <div class="rounded-lg bg-white border p-3 shadow-sm <%= meal["red_flag"] ? 'border-red-300/80 ring-1 ring-red-200/50' : 'border-stone-200/60' %>">
+                    <div class="flex items-center gap-2 mb-1">
+                      <p class="text-xs font-medium text-amber-600 uppercase tracking-wide"><%= meal["meal_type"].presence || "Refeição" %></p>
+                      <% if meal["red_flag"] %>
+                        <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-red-100 text-red-700" title="Suspeita de capricho">🚩</span>
+                      <% end %>
+                    </div>
                     <p class="text-sm text-stone-700"><%= meal["text"] %></p>
                   </div>
                 <% end %>
@@ -229,9 +234,15 @@
                   <% reasons_left = (entry["_order_reasons"] || []).dup %>
                   <% (entry["meals"] || []).each do |meal| %>
                     <% meal_reason = meal["reason"].presence || reasons_left.shift %>
-                    <div class="flex flex-wrap items-start gap-3">
+                    <div class="flex flex-wrap items-start gap-3 <%= meal["red_flag"] ? 'rounded-lg border border-red-200/60 bg-red-50/30 p-3' : '' %>">
                       <div class="flex-1 min-w-0">
-                        <p class="text-sm text-stone-600 flex items-center gap-2">
+                        <div class="flex items-center gap-2 flex-wrap">
+                          <span class="text-xs font-medium text-amber-600 uppercase"><%= meal["meal_type"].presence || "Refeição" %></span>
+                          <% if meal["red_flag"] %>
+                            <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-red-100 text-red-700" title="Suspeita de capricho">🚩</span>
+                          <% end %>
+                        </div>
+                        <p class="text-sm text-stone-600 flex items-center gap-2 mt-0.5">
                           <span class="text-amber-500">•</span>
                           <%= meal["text"] %>
                         </p>
@@ -748,8 +759,15 @@
             var reasonsLeft = (entry._order_reasons || entry["_order_reasons"] || []).slice();
             (entry.meals || []).forEach(function(meal) {
               var mealReason = meal.reason || reasonsLeft.shift();
-              html += '<div class="flex flex-wrap items-start gap-3">';
-              html += '<div class="flex-1 min-w-0"><p class="text-sm text-stone-600 flex items-center gap-2"><span class="text-amber-500">•</span>' + escapeHtml(meal.text || '') + '</p></div>';
+              var mealType = meal.meal_type || meal["meal_type"] || "Refeição";
+              var redFlag = meal.red_flag || meal["red_flag"];
+              var mealClass = redFlag ? 'rounded-lg border border-red-200/60 bg-red-50/30 p-3' : '';
+              html += '<div class="flex flex-wrap items-start gap-3 ' + mealClass + '">';
+              html += '<div class="flex-1 min-w-0">';
+              html += '<div class="flex items-center gap-2 flex-wrap"><span class="text-xs font-medium text-amber-600 uppercase">' + escapeHtml(mealType) + '</span>';
+              if (redFlag) html += '<span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-red-100 text-red-700" title="Suspeita de capricho">🚩</span>';
+              html += '</div>';
+              html += '<p class="text-sm text-stone-600 flex items-center gap-2 mt-0.5"><span class="text-amber-500">•</span>' + escapeHtml(meal.text || '') + '</p></div>';
               if (mealReason) {
                 html += '<div class="shrink-0 rounded-lg bg-white/80 border border-amber-200/50 px-3 py-2 max-w-[240px]">';
                 html += '<p class="text-xs font-medium text-amber-800 mb-0.5">Why they ordered in</p>';

@@ -196,11 +196,12 @@ class DashboardController < ApplicationController
     return render json: { error: "Patient not found" }, status: :not_found unless patient
 
     items = params[:items] || []
-    meal_type = params[:meal_type].presence || "Refeição"
     return render json: { error: "No items to add" }, status: :bad_request if items.empty?
 
     from_order = params[:from_order].to_s == "true" || params[:from_order] == true
     order_reason = params[:order_reason].to_s.strip.presence
+
+    meal_type, red_flag = infer_meal_type_and_flag(order_reason)
 
     infos = patient.patient_infos || {}
     diary_key = "food_diary_history_and_obs"
@@ -218,6 +219,7 @@ class DashboardController < ApplicationController
         "text" => [item["name"], item["restaurant"]].compact.join(" @ ")
       }
       m["reason"] = order_reason if order_reason.present?
+      m["red_flag"] = true if red_flag
       m
     end
 
@@ -292,6 +294,8 @@ class DashboardController < ApplicationController
 
     date = params[:date].presence || Time.zone.today.strftime("%Y-%m-%d")
 
+    meal_type, red_flag = infer_meal_type_and_flag(reason)
+
     infos = patient.patient_infos || {}
     diary_key = "food_diary_history_and_obs"
     dietary = infos["dietary_history"] || {}
@@ -303,7 +307,11 @@ class DashboardController < ApplicationController
     entry = diary.find { |e| e["date"].to_s == date }
     if entry && entry["meals"].present?
       meal_without_reason = entry["meals"].reverse.find { |m| m["reason"].blank? }
-      meal_without_reason["reason"] = reason if meal_without_reason
+      if meal_without_reason
+        meal_without_reason["reason"] = reason
+        meal_without_reason["meal_type"] = meal_type
+        meal_without_reason["red_flag"] = true if red_flag
+      end
     end
     infos["dietary_history"] ||= {}
     infos["dietary_history"][diary_key] = diary
@@ -519,6 +527,30 @@ class DashboardController < ApplicationController
   end
 
   private
+
+  # Infer meal type from time of day; when reason suggests capricho (whim), return Asneira + red_flag.
+  def infer_meal_type_and_flag(reason)
+    reason_lower = reason.to_s.downcase.strip
+    capricho_patterns = [
+      "capricho", "só porque", "porque queria", "sem motivo", "apeteceu", "vontade",
+      "tédio", "fome emocional", "preguiça", "não tinha nada", "sem razão",
+      "só queria", "deu vontade"
+    ]
+    is_capricho = capricho_patterns.any? { |p| reason_lower.include?(p) }
+
+    if is_capricho
+      return ["Asneira", true]
+    end
+
+    hour = Time.zone.now.hour
+    meal_type = case hour
+                when 5..9   then "Café da manhã"
+                when 10..14 then "Almoço"
+                when 15..17 then "Lanche da Tarde"
+                else "Lanche"
+                end
+    [meal_type, false]
+  end
 
   def broadcast_order_out_update(patient)
     PatientOrderOutChannel.broadcast_to(
