@@ -15,4 +15,9 @@ Rails.application.routes.draw do
   get "find_food", to: "dashboard#find_food", as: :find_food
   get "warm_cache", to: "dashboard#warm_cache", as: :warm_cache
   get "cached_food", to: "dashboard#cached_food", as: :cached_food
+  get "cached_grocery_basket", to: "dashboard#cached_grocery_basket", as: :cached_grocery_basket
+  get "grocery_basket", to: "dashboard#grocery_basket", as: :grocery_basket
+  post "add_to_food_log", to: "dashboard#add_to_food_log", as: :add_to_food_log
+  post "add_basket_to_cart", to: "dashboard#add_basket_to_cart", as: :add_basket_to_cart
+  get "nutrition", to: "dashboard#nutrition", as: :nutrition
 end

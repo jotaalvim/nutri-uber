@@ -9,6 +9,7 @@ import json
 import re
 import time
 import urllib.parse
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Any
 
@@ -18,6 +19,115 @@ from playwright.sync_api import sync_playwright
 # Uber Eats URL structure
 UBER_PREFIX = "https://www.ubereats.com"
 UBER_PT = "https://www.ubereats.com/pt-en"
+SHOP_FEED_URL = "https://www.ubereats.com/feeds/shop_feed"
+
+
+def _fetch_single_uber_eats_image(item_name: str, headless: bool = True) -> str | None:
+    """Fetch image URL for one item from Uber Eats. Used by concurrent workers."""
+    name = (item_name or "").strip()
+    if not name:
+        return None
+    # Try feed with search query first (often works better), then shop_feed
+    urls_to_try = [
+        f"{UBER_PT}/feed?q={urllib.parse.quote(name[:40])}",
+        SHOP_FEED_URL,
+        f"{UBER_PT}/feed",
+    ]
+    try:
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=headless)
+            context = browser.new_context(
+                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                locale="pt-PT",
+            )
+            page = context.new_page()
+            try:
+                for url in urls_to_try:
+                    try:
+                        page.goto(url, wait_until="domcontentloaded", timeout=12000)
+                        time.sleep(1.5)
+                        break
+                    except Exception:
+                        continue
+                try:
+                    accept_btn = page.get_by_role("button", name="Accept")
+                    if accept_btn.is_visible(timeout=1500):
+                        accept_btn.click()
+                        time.sleep(0.5)
+                except Exception:
+                    pass
+
+                # If we didn't use search URL, try to search on page
+                if "q=" not in page.url:
+                    search_el = page.get_by_placeholder("Search", exact=False).or_(
+                        page.locator('input[type="search"], input[aria-label*="search" i], input[placeholder*="search" i], input[placeholder*="Pesquisar" i]')
+                    ).first
+                    if search_el.is_visible(timeout=1500):
+                        search_el.fill(name[:50])
+                        time.sleep(1.5)
+
+                for _ in range(3):
+                    page.mouse.wheel(0, 300)
+                    time.sleep(0.3)
+
+                img_url = page.evaluate("""
+                    () => {
+                        const skip = /logo|icon|avatar|badge|placeholder|\\.svg|_static\\//i;
+                        const imgs = document.querySelectorAll('img[src]');
+                        for (const im of imgs) {
+                            const src = im.src || im.getAttribute('data-src');
+                            if (!src || !src.startsWith('http') || src.endsWith('.svg')) continue;
+                            if (skip.test(src) || skip.test(im.alt || '')) continue;
+                            if (src.includes('cloudfront') || src.includes('tb-static') || src.includes('d1a3f4spazzrp4') || src.includes('d3i4yxtzktqr9n') || src.match(/\\d{10,}\\.(jpg|jpeg|png|webp)/i)) {
+                                return src;
+                            }
+                        }
+                        for (const im of imgs) {
+                            const src = im.src || im.getAttribute('data-src');
+                            if (src && src.startsWith('http') && !src.endsWith('.svg') && !skip.test(src)) {
+                                const parent = im.closest('a[href*="/store/"], a[href*="/product/"], [class*="card"], [class*="Card"]');
+                                if (parent && (src.includes('cloudfront') || src.includes('jpeg') || src.includes('jpg') || src.includes('png'))) return src;
+                            }
+                        }
+                        return null;
+                    }
+                """)
+                return img_url
+            finally:
+                browser.close()
+    except Exception:
+        pass
+    return None
+
+
+def fetch_uber_eats_images_for_items(
+    items: list[dict[str, Any]],
+    headless: bool = True,
+    max_workers: int = 4,
+) -> None:
+    """
+    Fetch image_url from Uber Eats for items that don't have one.
+    Runs concurrently (ThreadPoolExecutor) for speed.
+    Mutates items in place.
+    """
+    to_fetch = [(i, it) for i, it in enumerate(items) if not it.get("image_url") and (it.get("name") or "").strip()]
+    if not to_fetch:
+        return
+
+    def _task(args):
+        idx, it = args
+        url = _fetch_single_uber_eats_image(it.get("name"), headless=headless)
+        return idx, it, url
+
+    with ThreadPoolExecutor(max_workers=min(max_workers, len(to_fetch))) as ex:
+        futures = {ex.submit(_task, item): item for item in to_fetch}
+        for future in as_completed(futures, timeout=30):
+            try:
+                idx, it, url = future.result()
+                if url:
+                    it["image_url"] = url
+            except Exception:
+                pass
 
 
 def load_patient_diet(filepath: str | Path) -> list[dict[str, Any]]:
@@ -98,30 +208,146 @@ def _text_contains_any(text: str, keywords: list[str]) -> bool:
 
 def fetch_nutrition_estimate(food_name: str) -> dict[str, float] | None:
     """Try to get protein/carbs/fat from Open Food Facts search (best-effort for restaurant food)."""
+    detail = fetch_nutrition_detail(food_name)
+    if not detail or not detail.get("nutriments"):
+        return None
+    nut = detail["nutriments"]
+    if not any(nut.get(k) for k in ("protein", "carbohydrate", "fat")):
+        return None
+    return {
+        "protein": round(float(nut.get("protein", 0) or 0), 1),
+        "carbohydrate": round(float(nut.get("carbohydrate", 0) or 0), 1),
+        "fat": round(float(nut.get("fat", 0) or 0), 1),
+    }
+
+
+_DRINK_KEYWORDS = frozenset(
+    "water eau água mineral aqua soda cola coke pepsi juice sumo refrigerante "
+    "bebida drink cerveja beer vinho wine licor vodka whisky".split()
+)
+
+
+def _score_product_match(product: dict[str, Any], search_words: list[str]) -> float:
+    """Score how well a product matches the search. Higher = better match."""
+    name = (product.get("product_name") or "").lower()
+    nut = product.get("nutriments") or {}
+    # Strong penalty for drinks/water
+    if any(kw in name for kw in _DRINK_KEYWORDS):
+        return -100
+    # Name match: count search words found in product name
+    name_score = sum(1 for w in search_words if w and len(w) > 1 and w.lower() in name)
+    # Completeness: prefer products with real nutrition data
+    has_protein = (nut.get("proteins_100g") or nut.get("proteins")) is not None
+    has_carbs = (nut.get("carbohydrates_100g") or nut.get("carbohydrates")) is not None
+    has_fat = (nut.get("fat_100g") or nut.get("fat")) is not None
+    has_energy = (
+        (nut.get("energy-kcal_100g") or nut.get("energy-kcal") or nut.get("energy-kcal_value_computed"))
+        is not None
+    )
+    completeness = sum([has_protein, has_carbs, has_fat, has_energy])
+    # Prefer products with actual macros (avoid water/zero)
+    p = float(nut.get("proteins_100g") or nut.get("proteins") or 0)
+    c = float(nut.get("carbohydrates_100g") or nut.get("carbohydrates") or 0)
+    f = float(nut.get("fat_100g") or nut.get("fat") or 0)
+    total = p + c + f
+    substance = min(5, total)  # scale 0-5 by total macros
+    return name_score * 15 + completeness * 3 + substance
+
+
+def fetch_nutrition_detail(food_name: str) -> dict[str, Any] | None:
+    """Get full nutrition info from Open Food Facts. Picks best-matching product by name + completeness."""
     try:
-        words = (food_name or "").split()[:3]
+        words = [w for w in (food_name or "").split() if len(w) > 1][:5]
         q = urllib.parse.quote(" ".join(words) if words else "food")
-        url = f"https://world.openfoodfacts.org/api/v2/search?search_terms={q}&search_simple=1&page_size=1"
-        r = requests.get(url, timeout=5)
+        url = f"https://world.openfoodfacts.org/api/v2/search?search_terms={q}&search_simple=1&page_size=10&fields=product_name,nutriments,energy-kcal_100g"
+        r = requests.get(url, timeout=6)
         if r.status_code != 200:
             return None
         data = r.json()
         products = data.get("products") or []
         if not products:
             return None
-        nut = products[0].get("nutriments") or {}
-        protein = nut.get("proteins_100g") or nut.get("proteins")
-        carbs = nut.get("carbohydrates_100g") or nut.get("carbohydrates")
-        fat = nut.get("fat_100g") or nut.get("fat")
-        if protein is None and carbs is None and fat is None:
-            return None
-        return {
-            "protein": round(float(protein or 0), 1),
-            "carbohydrate": round(float(carbs or 0), 1),
-            "fat": round(float(fat or 0), 1),
+        # Pick best match: name similarity + completeness, avoid drinks/water
+        scored = [(pr, _score_product_match(pr, words)) for pr in products]
+        best, score = max(scored, key=lambda x: x[1])
+        if score < 0:
+            return None  # All results are drinks/water
+        p = best
+        nut = p.get("nutriments") or {}
+        result: dict[str, Any] = {
+            "product_name": p.get("product_name"),
+            "nutriments": {},
+            "source": "openfoodfacts",
         }
+        for key, off_keys in [
+            ("energy_kcal", ["energy-kcal_100g", "energy-kcal", "energy-kcal_value_computed"]),
+            ("protein", ["proteins_100g", "proteins"]),
+            ("carbohydrate", ["carbohydrates_100g", "carbohydrates"]),
+            ("fat", ["fat_100g", "fat"]),
+            ("fiber", ["fiber_100g", "fiber"]),
+            ("sugar", ["sugars_100g", "sugars"]),
+            ("sodium", ["sodium_100g", "sodium"]),
+            ("salt", ["salt_100g", "salt"]),
+        ]:
+            if key not in result["nutriments"]:
+                val = None
+                for k in off_keys:
+                    v = nut.get(k)
+                    if v is not None:
+                        if key == "energy_kcal" and float(v) == 0 and k != off_keys[-1]:
+                            continue
+                        val = v
+                        break
+                if val is not None:
+                    result["nutriments"][key] = round(float(val), 1)
+        return result
     except Exception:
         return None
+
+
+def load_all_menus_items(
+    filepath: str | Path | None = None,
+    max_items: int = 800,
+) -> list[dict[str, Any]]:
+    """Load items from all_menus.json for diverse selection. Returns flat list with restaurant_url, store name."""
+    path = Path(filepath or (Path(__file__).parent / "all_menus.json"))
+    if not path.exists():
+        return []
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(data, list):
+            return []
+        items: list[dict[str, Any]] = []
+        for store in data:
+            if len(items) >= max_items:
+                break
+            url = store.get("url") or ""
+            store_name = url.split("/store/")[-1].split("/")[0] if "/store/" in url else "Uber Eats"
+            store_name = store_name.replace("-", " ").title()
+            for m in store.get("menu") or []:
+                name = (m.get("name") or "").strip()
+                if not name or len(name) < 3:
+                    continue
+                name_lower = name.lower()
+                if any(skip in name_lower for skip in ("featured", "most liked", "combos", "section", "#1 ", "#2 ", "#3 ")):
+                    continue
+                if name_lower.startswith("#") and name_lower[1:2].isdigit():
+                    continue
+                items.append({
+                    "name": name[:120],
+                    "description": (m.get("description") or "")[:300],
+                    "price": m.get("price"),
+                    "image_url": m.get("image_url"),
+                    "restaurant": store_name,
+                    "restaurant_url": url,
+                    "product_url": m.get("product_url"),
+                    "from_all_menus": True,
+                })
+                if len(items) >= max_items:
+                    break
+        return items
+    except Exception:
+        return []
 
 
 def filter_menu_item(item: dict[str, Any], constraints: dict[str, Any]) -> tuple[bool, str]:
@@ -329,32 +555,431 @@ def scrape_restaurant_menu(
     return unique
 
 
+# Grocery basket composition - meal structure
+BASKET_MEAL_STRUCTURE = {
+    "protein": ["frango", "chicken", "peixe", "fish", "carne", "meat", "ovo", "egg", "atum", "tuna", "peru", "turkey", "tofu", "grilled", "grelhado"],
+    "carbohydrate": ["arroz", "rice", "batata", "potato", "massa", "pasta", "pão", "bread", "quinoa", "integral", "whole"],
+    "vegetable": ["salada", "salad", "vegetal", "vegetable", "legumes", "sopa", "soup", "brócolos", "broccoli", "espinafre", "spinach"],
+    "fruit": ["fruta", "fruit", "maçã", "apple", "banana", "laranja", "orange"],
+    "drink": ["água", "water", "sumo", "juice", "chá", "tea", "leite", "milk"],
+}
+
+
+def _item_matches_category(item: dict[str, Any], keywords: list[str]) -> bool:
+    """Check if item name/description matches any keyword in category."""
+    name = (item.get("name") or "").lower()
+    desc = (item.get("description") or "").lower()
+    combined = f"{name} {desc}"
+    return any(kw in combined for kw in keywords)
+
+
+def compose_healthy_basket(
+    items: list[dict[str, Any]],
+    constraints: dict[str, Any],
+    max_items: int = 6,
+) -> list[dict[str, Any]]:
+    """
+    Compose a balanced meal basket from filtered items.
+    Picks: 1 protein, 1 carb, 1+ veg, optional fruit/drink.
+    Respects allergies, favors favorites.
+    """
+    basket: list[dict[str, Any]] = []
+    used_names: set[str] = set()
+
+    def pick_one(category: str) -> dict[str, Any] | None:
+        keywords = BASKET_MEAL_STRUCTURE.get(category, [])
+        candidates = [
+            i for i in items
+            if _item_matches_category(i, keywords)
+            and (i.get("name") or "").strip().lower() not in used_names
+        ]
+        if not candidates:
+            return None
+        # Prefer higher score (favorites)
+        candidates.sort(key=lambda x: x.get("score", 50), reverse=True)
+        chosen = candidates[0]
+        used_names.add((chosen.get("name") or "").strip().lower())
+        return chosen
+
+    # 1. Protein
+    p = pick_one("protein")
+    if p:
+        basket.append({**p, "basket_role": "protein"})
+
+    # 2. Carbohydrate
+    c = pick_one("carbohydrate")
+    if c:
+        basket.append({**c, "basket_role": "carbohydrate"})
+
+    # 3. Vegetable
+    v = pick_one("vegetable")
+    if v:
+        basket.append({**v, "basket_role": "vegetable"})
+
+    # 4. Optional second veg or fruit
+    v2 = pick_one("vegetable") or pick_one("fruit")
+    if v2 and len(basket) < max_items:
+        basket.append({**v2, "basket_role": "vegetable_or_fruit"})
+
+    # 5. Drink (optional)
+    d = pick_one("drink")
+    if d and len(basket) < max_items:
+        basket.append({**d, "basket_role": "drink"})
+
+    # If we have very few items, add high-scoring items we missed
+    if len(basket) < 3:
+        for item in sorted(items, key=lambda x: x.get("score", 0), reverse=True):
+            if len(basket) >= max_items:
+                break
+            key = (item.get("name") or "").strip().lower()
+            if key and key not in used_names:
+                basket.append({**item, "basket_role": "extra"})
+                used_names.add(key)
+
+    return basket
+
+
+def scrape_shop_feed_healthy_items(
+    constraints: dict[str, Any],
+    headless: bool = True,
+    max_items: int = 20,
+) -> tuple[list[dict[str, Any]], str]:
+    """
+    Scrape healthy grocery items from Uber Eats shop feed.
+    Uses Playwright to navigate to shop_feed, search for healthy foods.
+    Returns (items, store_url). store_url is SHOP_FEED_URL for valid Order links.
+    """
+    items: list[dict[str, Any]] = []
+    search_terms = ["healthy", "frango grelhado", "arroz integral", "salada", "legumes"]
+    if constraints.get("favorites"):
+        search_terms = list(constraints["favorites"])[:3] + search_terms
+    search_terms = list(dict.fromkeys(search_terms))[:5]
+
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=headless)
+        context = browser.new_context(
+            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            locale="pt-PT",
+        )
+        page = context.new_page()
+        try:
+            page.goto(SHOP_FEED_URL, wait_until="domcontentloaded", timeout=25000)
+            time.sleep(4)
+
+            try:
+                accept_btn = page.get_by_role("button", name="Accept")
+                if accept_btn.is_visible(timeout=2000):
+                    accept_btn.click()
+                    time.sleep(1)
+            except Exception:
+                pass
+
+            for _ in range(4):
+                page.mouse.wheel(0, 600)
+                time.sleep(0.5)
+
+            items = page.evaluate("""
+                () => {
+                    const results = [];
+                    const priceRe = /[€$]\\s*[\\d,]+\\.?\\d*/;
+                    document.querySelectorAll('a[href*="/store/"], a[href*="/product/"], [data-testid*="item"], [class*="ProductCard"]').forEach(el => {
+                        const a = el.tagName === 'A' ? el : el.querySelector('a[href*="/store/"], a[href*="/product/"]');
+                        const href = a?.href || el.getAttribute('href');
+                        if (!href || !(href.includes('/store/') || href.includes('/product/'))) return;
+                        const nameEl = el.querySelector('h1, h2, h3, h4, [class*="title"], [data-testid*="title"]');
+                        const name = nameEl?.innerText?.trim() || el.innerText?.trim()?.split('\\n')[0];
+                        if (!name || name.length < 3) return;
+                        const fullText = el.innerText || '';
+                        const pm = fullText.match(priceRe);
+                        const im = el.querySelector('img');
+                        results.push({
+                            name: name.slice(0, 120),
+                            description: null,
+                            image_url: im?.src || im?.getAttribute('data-src') || null,
+                            price: pm ? pm[0].trim() : null,
+                            product_url: href
+                        });
+                    });
+                    if (results.length === 0) {
+                        document.querySelectorAll('li, [role="listitem"], [class*="card"]').forEach(li => {
+                            const h = li.querySelector('h1, h2, h3, h4, h5, h6, [class*="title"]');
+                            const name = h?.innerText?.trim() || li.innerText?.trim()?.split('\\n')[0];
+                            if (!name || name.length < 3) return;
+                            const im = li.querySelector('img');
+                            const fullText = li.innerText || '';
+                            const pm = fullText.match(priceRe);
+                            results.push({
+                                name: name.slice(0, 120),
+                                description: null,
+                                image_url: im?.src || im?.getAttribute('data-src') || null,
+                                price: pm ? pm[0].trim() : null,
+                                product_url: null
+                            });
+                        });
+                    }
+                    return results;
+                }
+            """)
+            items = items or []
+        except Exception:
+            pass
+        finally:
+            browser.close()
+
+    seen = set()
+    unique = []
+    for m in items:
+        name = (m.get("name") or "").strip()
+        key = name.lower()
+        if not key or key in seen or len(name) < 4:
+            continue
+        if any(p in key for p in ("save on", "offer", "spend €", "appetisers", "taxa", "fee")):
+            continue
+        seen.add(key)
+        m["restaurant_url"] = m.get("product_url") or SHOP_FEED_URL
+        m["store_url"] = SHOP_FEED_URL
+        unique.append(m)
+
+    return unique[:max_items], SHOP_FEED_URL
+
+
+def scrape_grocery_stores(
+    city_slug: str = "braga-norte",
+    category: str = "grocery",
+    max_stores: int = 3,
+    headless: bool = True,
+) -> list[dict[str, Any]]:
+    """Scrape grocery/supermarket stores from Uber Eats (same pattern as restaurants)."""
+    url = f"{UBER_PT}/category/{city_slug}/{category}"
+    stores = []
+
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=headless)
+        context = browser.new_context(
+            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            locale="pt-PT",
+        )
+        page = context.new_page()
+
+        try:
+            page.goto(url, wait_until="domcontentloaded", timeout=20000)
+            time.sleep(3)
+
+            try:
+                accept_btn = page.get_by_role("button", name="Accept")
+                if accept_btn.is_visible(timeout=2000):
+                    accept_btn.click()
+                    time.sleep(1)
+            except Exception:
+                pass
+
+            stores = page.evaluate("""
+                () => {
+                    const links = Array.from(document.querySelectorAll('a[href*="/store/"]'));
+                    const seen = new Set();
+                    return links
+                        .map(a => {
+                            const href = a.href || a.getAttribute('href');
+                            if (!href || !href.includes('/store/') || seen.has(href)) return null;
+                            seen.add(href);
+                            const name = (a.querySelector('h3, h4, [role="heading"]') || a).innerText?.trim() || a.innerText?.trim() || 'Store';
+                            return { name: name.split('\\n')[0].slice(0, 80), url: href };
+                        })
+                        .filter(Boolean);
+                }
+            """)
+            stores = stores[:max_stores] if stores else []
+        except Exception:
+            pass
+        finally:
+            browser.close()
+
+    return stores
+
+
+def find_grocery_basket_for_patient(
+    patient: dict[str, Any],
+    city_slug: str = "braga-norte",
+    max_stores: int = 2,
+    max_items_per_store: int = 30,
+    headless: bool = True,
+) -> dict[str, Any]:
+    """
+    Find a ready-to-order grocery basket: healthy meal from local grocery/supermarket.
+    Returns { store, store_url, items, total_estimate }.
+    Filters by allergies, intolerances, dislikes; favors favorites.
+    """
+    constraints = extract_dietary_constraints(patient)
+    patient_name = patient.get("patient_name", "Unknown")
+
+    # Try shop_feed first (grocery feed - valid links); fallback to category scrape
+    shop_items, shop_url = scrape_shop_feed_healthy_items(
+        constraints=constraints,
+        headless=headless,
+        max_items=max_items_per_store * 2,
+    )
+    stores: list[dict[str, Any]] = []
+    if shop_items:
+        stores = [{"name": "Uber Eats Grocery", "url": shop_url}]
+        all_items_from_shop = []
+        for item in shop_items:
+            passes, _ = filter_menu_item(item, constraints)
+            if passes:
+                score = score_menu_item(item, constraints)
+                all_items_from_shop.append({
+                    **item,
+                    "restaurant": "Uber Eats Grocery",
+                    "restaurant_url": item.get("restaurant_url") or shop_url,
+                    "store_url": shop_url,
+                    "score": score,
+                    "patient": patient_name,
+                })
+        if all_items_from_shop:
+            all_items_from_shop.sort(key=lambda x: x["score"], reverse=True)
+            basket = compose_healthy_basket(all_items_from_shop, constraints, max_items=6)
+            if not basket:
+                basket = all_items_from_shop[:6]
+            if basket:
+                for i, item in enumerate(basket):
+                    if not item.get("macronutrient_distribution_in_grams"):
+                        nut = fetch_nutrition_estimate(item.get("name", ""))
+                        if nut:
+                            item["macronutrient_distribution_in_grams"] = nut
+                        time.sleep(0.5)
+                total_macros = {"protein": 0, "carbohydrate": 0, "fat": 0}
+                for item in basket:
+                    m = item.get("macronutrient_distribution_in_grams") or {}
+                    total_macros["protein"] += m.get("protein", 0) or 0
+                    total_macros["carbohydrate"] += m.get("carbohydrate", 0) or 0
+                    total_macros["fat"] += m.get("fat", 0) or 0
+                return {
+                    "patient": patient_name,
+                    "store": "Uber Eats Grocery",
+                    "store_url": shop_url,
+                    "items": basket,
+                    "total_macros": total_macros,
+                    "count": len(basket),
+                }
+
+    # Fallback: grocery category then healthy restaurants
+    stores = scrape_grocery_stores(
+        city_slug=city_slug,
+        category="grocery",
+        max_stores=max_stores,
+        headless=headless,
+    )
+    if not stores:
+        stores = scrape_healthy_restaurants(
+            city_slug=city_slug,
+            category="healthy",
+            max_restaurants=max_stores,
+            headless=headless,
+        )
+
+    all_items: list[dict[str, Any]] = []
+
+    for store in stores:
+        items = scrape_restaurant_menu(store["url"], headless=headless)
+        for item in items[:max_items_per_store]:
+            passes, _ = filter_menu_item(item, constraints)
+            if passes:
+                score = score_menu_item(item, constraints)
+                all_items.append({
+                    **item,
+                    "restaurant": store["name"],
+                    "restaurant_url": store["url"],
+                    "score": score,
+                    "patient": patient_name,
+                })
+
+    all_items.sort(key=lambda x: x["score"], reverse=True)
+
+    # Compose basket from best store (we use items from first store that has enough)
+    basket: list[dict[str, Any]] = []
+    store_name = ""
+    store_url = ""
+
+    for store in stores:
+        store_items = [i for i in all_items if i["restaurant"] == store["name"]]
+        if len(store_items) >= 3:
+            basket = compose_healthy_basket(store_items, constraints, max_items=6)
+            if basket:
+                store_name = store["name"]
+                store_url = store["url"]
+                break
+
+    if not basket and all_items and stores:
+        # Fallback: take top items from first store
+        store_name = stores[0]["name"]
+        store_url = stores[0]["url"]
+        basket = all_items[:6]
+
+    for i, item in enumerate(basket):
+        if not item.get("macronutrient_distribution_in_grams"):
+            nut = fetch_nutrition_estimate(item.get("name", ""))
+            if nut:
+                item["macronutrient_distribution_in_grams"] = nut
+            time.sleep(0.5)
+
+    total_macros = {"protein": 0, "carbohydrate": 0, "fat": 0}
+    for item in basket:
+        m = item.get("macronutrient_distribution_in_grams") or {}
+        total_macros["protein"] += m.get("protein", 0) or 0
+        total_macros["carbohydrate"] += m.get("carbohydrate", 0) or 0
+        total_macros["fat"] += m.get("fat", 0) or 0
+
+    return {
+        "patient": patient_name,
+        "store": store_name,
+        "store_url": store_url,
+        "items": basket,
+        "total_macros": total_macros,
+        "count": len(basket),
+    }
+
+
 def find_food_for_patient(
     patient: dict[str, Any],
     city_slug: str = "braga-norte",
     max_restaurants: int = 3,
     max_items_per_restaurant: int = 20,
     headless: bool = True,
+    max_all_menus: int = 30,
 ) -> list[dict[str, Any]]:
     """
     Main pipeline: load patient → scrape healthy restaurants → scrape menus → filter by diet → score.
+    Supplements with items from all_menus.json for more diverse selection.
     Returns ranked list of food items that fit the patient's dietary constraints.
     """
     constraints = extract_dietary_constraints(patient)
     patient_name = patient.get("patient_name", "Unknown")
 
+    all_items: list[dict[str, Any]] = []
+
+    # 1. Add items from all_menus.json (diverse pre-scraped menus)
+    menu_items = load_all_menus_items()
+    for item in menu_items[:max_all_menus * 2]:  # oversample, filter will reduce
+        passes, _ = filter_menu_item(item, constraints)
+        if passes:
+            score = score_menu_item(item, constraints)
+            all_items.append({
+                **item,
+                "restaurant": item.get("restaurant", "Uber Eats"),
+                "restaurant_url": item.get("restaurant_url", ""),
+                "score": score,
+                "patient": patient_name,
+            })
+
+    # 2. Scrape live restaurants
     restaurants = scrape_healthy_restaurants(
         city_slug=city_slug,
         max_restaurants=max_restaurants,
         headless=headless,
     )
-
-    all_items: list[dict[str, Any]] = []
-
     for rest in restaurants:
         items = scrape_restaurant_menu(rest["url"], headless=headless)
         for item in items[:max_items_per_restaurant]:
-            passes, reason = filter_menu_item(item, constraints)
+            passes, _ = filter_menu_item(item, constraints)
             if passes:
                 score = score_menu_item(item, constraints)
                 all_items.append({
@@ -365,18 +990,25 @@ def find_food_for_patient(
                     "patient": patient_name,
                 })
 
-    # Sort by score descending
-    all_items.sort(key=lambda x: x["score"], reverse=True)
+    # Sort by score descending, dedupe by name+restaurant
+    seen: set[tuple[str, str]] = set()
+    unique: list[dict[str, Any]] = []
+    for x in sorted(all_items, key=lambda i: i["score"], reverse=True):
+        key = (x.get("name", "").strip().lower(), x.get("restaurant", "").strip().lower())
+        if key in seen or len(key[0]) < 3:
+            continue
+        seen.add(key)
+        unique.append(x)
 
     # Enrich top items with nutrition estimate from Open Food Facts (best-effort)
-    for i, item in enumerate(all_items[:10]):
+    for i, item in enumerate(unique[:15]):
         if not item.get("macronutrient_distribution_in_grams"):
             nut = fetch_nutrition_estimate(item.get("name", ""))
             if nut:
                 item["macronutrient_distribution_in_grams"] = nut
-            time.sleep(0.7)  # Rate limit
+            time.sleep(0.5)  # Rate limit
 
-    return all_items
+    return unique
 
 
 def run_from_jsonl(

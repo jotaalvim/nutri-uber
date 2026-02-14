@@ -1,13 +1,27 @@
 services:
+  nutri-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    image: nutri-api
+    ports:
+      - "5001:5001"
+    volumes:
+      - nutri_cache:/app/.cache
+    environment:
+      - PORT=5001
+
   nutri-dashboard:
     build: .
     image: nutri-dashboard-rails
     ports:
       - "4000:4000"
+    depends_on:
+      - nutri-api
     environment:
       - RAILS_ENV=production
       - DATABASE_PATH=/app/data/nutri_dashboard.db
-      - FOOD_FINDER_URL=http://host.docker.internal:5001
+      - FOOD_FINDER_URL=http://nutri-api:5001
       - SECRET_KEY_BASE=nutri_dashboard_prod_secret_key_base_at_least_64_bytes_long_for_cookie_signing_12345
       - RAILS_MASTER_KEY=45d872275c343156907d96a4f3c4ccf1
     volumes:
@@ -15,3 +29,4 @@ services:
 
 volumes:
   nutri_data:
+  nutri_cache:

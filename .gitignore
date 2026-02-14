@@ -1,4 +1,5 @@
 .cache/
+.auth/
 __pycache__/
 *.pyc
 .env

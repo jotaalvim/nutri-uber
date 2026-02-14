@@ -127,14 +127,14 @@
       </section>
     </div>
 
-    <%# Find healthy food - Uber Eats integration %>
+    <%# Ready-to-order meals + basket in one card %>
     <section class="rounded-2xl bg-white border border-stone-200/80 shadow-sm p-6 sm:p-8" id="food-finder-section">
       <h2 class="font-display text-lg font-semibold text-stone-800 mb-4 flex items-center gap-2">
         <span aria-hidden="true">🥡</span>
-        Find healthy food (Uber Eats)
+        Find healthy food
       </h2>
       <p class="text-sm text-stone-600 mb-4">
-        Scrapes healthy restaurants in Braga and filters by this patient's dietary constraints (allergies, dislikes, favorites).
+        Ready-to-order meals and grocery baskets. Respects allergies, intolerances, dislikes; favors your favorite ingredients.
       </p>
       <button type="button"
         data-patient-id="<%= @selected_patient.id %>"
@@ -144,7 +144,18 @@
         <span data-find-food-label>Find food for <%= @selected_patient.patient_name %></span>
       </button>
       <div data-find-food-results class="mt-6 hidden">
-        <p class="text-sm font-medium text-stone-700 mb-3" data-find-food-count></p>
+        <div class="flex flex-wrap items-center gap-3 mb-4">
+          <p class="text-sm font-medium text-stone-700" data-find-food-count></p>
+          <button type="button" data-add-to-log
+            class="inline-flex items-center gap-2 px-4 py-2 rounded-xl font-medium text-sm bg-amber-100 text-amber-800 hover:bg-amber-200 transition-colors border border-amber-200">
+            Add to food log
+          </button>
+          <button type="button" data-add-to-cart
+            class="inline-flex items-center gap-2 px-4 py-2 rounded-xl font-medium text-sm bg-emerald-100 text-emerald-800 hover:bg-emerald-200 transition-colors border border-emerald-200"
+            title="Add basket items to cart (opens new tab in your Chrome)">
+            Add to cart
+          </button>
+        </div>
         <div data-find-food-list class="flex gap-4 overflow-x-auto pb-4 -mx-1 scroll-smooth snap-x snap-mandatory" style="scrollbar-width: thin;"></div>
       </div>
       <div data-find-food-error class="mt-4 hidden text-sm text-red-600"></div>
@@ -184,7 +195,7 @@
     </section>
     <%= content_for :head do %>
       <script>
-        document.addEventListener("DOMContentLoaded", () => {
+        function initFindFood() {
           const btn = document.querySelector("[data-find-food-trigger]");
           if (!btn) return;
           const patientId = btn.dataset.patientId;
@@ -202,51 +213,166 @@
             return a;
           }
 
-          function renderResults(data) {
-            const items = shuffle(data.items || []).slice(0, 15);
-            const cached = data.from_cache ? " (ready to order)" : "";
-            countEl.textContent = `Found ${data.count} items for ${data.patient}${cached}`;
-            listEl.innerHTML = items.map(item => {
-              const img = item.image_url || "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='280' height='160' fill='%23f5f5f4'%3E%3Crect width='280' height='160' fill='%23e7e5e4'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%23a8a29e' font-size='14'%3E🥗%3C/text%3E%3C/svg%3E";
+          let currentItems = [];
+
+          function mergeItems(foodData, basketData) {
+            const restaurantItems = (foodData?.items || []).map(i => ({ ...i, from_cache: foodData.from_cache }));
+            const basketItems = (basketData?.items || []).map(i => ({
+              ...i,
+              restaurant: basketData.store || i.restaurant,
+              restaurant_url: basketData.store_url || i.restaurant_url,
+              store_url: basketData.store_url
+            }));
+            return [...restaurantItems, ...basketItems];
+          }
+
+          function renderResults(dataOrItems) {
+            const raw = Array.isArray(dataOrItems) ? dataOrItems : (dataOrItems?.items || []);
+            const items = shuffle(raw).slice(0, 20);
+            currentItems = items;
+            const cached = items.some(i => i.from_cache);
+            countEl.textContent = `Found ${items.length} items for <%= @selected_patient.patient_name %>${cached ? " (ready to order)" : ""}`;
+            const SHOP_FEED = "ubereats.com/feeds/shop_feed";
+            const roleEmoji = { protein: "🥩", carbohydrate: "🌾", vegetable: "🥬", vegetable_or_fruit: "🍎", drink: "🥤" };
+            function placeholderForItem(it) {
+              const emoji = roleEmoji[it.basket_role] || "🥗";
+              return "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='280' height='160'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%23fef3c7'/%3E%3Cstop offset='100%25' stop-color='%23fde68a'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='280' height='160' fill='url(%23g)'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-size='48'%3E" + encodeURIComponent(emoji) + "%3C/text%3E%3C/svg%3E";
+            }
+            const defaultPlaceholder = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='280' height='160'%3E%3Crect width='280' height='160' fill='%23f5f5f4'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%23a8a29e' font-size='14'%3E🥗%3C/text%3E%3C/svg%3E";
+            listEl.innerHTML = items.map((item, idx) => {
+              const hasImg = !!(item.image_url && item.image_url.startsWith("http"));
+              const primaryImg = hasImg ? item.image_url : (item.basket_role ? placeholderForItem(item) : defaultPlaceholder);
               const macros = item.macronutrient_distribution_in_grams || {};
               const macroStr = [macros.protein, macros.carbohydrate, macros.fat].some(Boolean)
                 ? `P ${macros.protein || "—"}g · C ${macros.carbohydrate || "—"}g · F ${macros.fat || "—"}g`
                 : "Nutrition varies by portion";
+              let orderUrl = item.product_url || item.restaurant_url || item.store_url || "#";
+              if (orderUrl.includes(SHOP_FEED) || orderUrl === "https://www.ubereats.com/feeds/shop_feed") {
+                orderUrl = "https://www.ubereats.com/pt-en/feed?q=" + encodeURIComponent(item.name || "");
+              }
+              const roleBadge = item.basket_role ? `<span class="text-xs px-2 py-0.5 rounded bg-amber-200 text-amber-800">${escapeHtml(item.basket_role)}</span>` : "";
               return `
-              <div class="shrink-0 w-72 snap-center rounded-2xl overflow-hidden bg-white border border-stone-200/80 shadow-md hover:shadow-lg transition-shadow flex flex-col">
-                <a href="${escapeHtml(item.restaurant_url)}" target="_blank" rel="noopener" class="block">
+              <div class="shrink-0 w-72 snap-center rounded-2xl overflow-hidden bg-white border border-stone-200/80 shadow-md hover:shadow-lg transition-shadow flex flex-col" data-item-name="${escapeHtml(item.name)}">
+                <div class="block cursor-default">
                   <div class="aspect-[7/4] bg-stone-100 overflow-hidden">
-                    <img src="${escapeHtml(img)}" alt="${escapeHtml(item.name)}" class="w-full h-full object-cover" loading="lazy" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27280%27 height=%27160%27%3E%3Crect fill=%27%23e7e5e4%27 width=%27280%27 height=%27160%27/%3E%3Ctext x=%2750%25%27 y=%2750%25%27 dominant-baseline=%27middle%27 text-anchor=%27middle%27 fill=%27%23a8a29e%27%3E🥗%3C/text%3E%3C/svg%3E'"/>
+                    <img src="${escapeHtml(primaryImg)}" alt="${escapeHtml(item.name)}" class="w-full h-full object-cover" loading="lazy" data-fallback="${escapeHtml(defaultPlaceholder)}" onerror="this.onerror=null;this.src=this.dataset.fallback"/>
                   </div>
                   <div class="p-4 flex flex-col flex-1">
-                    <h3 class="font-display font-semibold text-stone-800 text-lg mb-1">${escapeHtml(item.name)}</h3>
+                    <div class="flex items-center gap-2 mb-1">
+                      <h3 class="font-display font-semibold text-stone-800 text-lg">${escapeHtml(item.name)}</h3>
+                      ${roleBadge}
+                    </div>
                     <p class="text-xs text-stone-500 mb-2">${escapeHtml(item.restaurant)}</p>
                     ${(item.description || "").trim() ? `<p class="text-sm text-stone-600 flex-1 line-clamp-2 mb-3">${escapeHtml(item.description)}</p>` : ""}
                     <div class="flex items-center gap-2 text-xs text-stone-500 mb-3">
                       <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-amber-100 text-amber-800">🌾 ${escapeHtml(macroStr)}</span>
                     </div>
-                    <div class="flex items-center justify-between mt-auto">
+                    <div class="flex items-center justify-between mt-auto gap-3">
                       <span class="text-xl font-bold text-stone-800">${escapeHtml(item.price || "—")}</span>
-                      <span class="inline-flex items-center gap-2 px-4 py-2 rounded-xl font-medium text-sm bg-emerald-600 text-white hover:bg-emerald-700 transition-colors">
-                        Order on Uber Eats →
-                      </span>
+                      <a href="${escapeHtml(orderUrl)}" target="_blank" rel="noopener" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium text-sm bg-emerald-600 text-white hover:bg-emerald-700 transition-colors shadow-sm shrink-0">
+                        Order →
+                      </a>
                     </div>
                   </div>
-                </a>
+                </div>
+                <div class="px-4 pb-4 pt-0 border-t border-stone-100">
+                  <button type="button" data-view-nutrition class="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-amber-100 text-amber-800 hover:bg-amber-200 border border-amber-200/80 transition-colors">
+                    <span data-nutrition-label>View nutrition</span>
+                    <span data-nutrition-chevron aria-hidden="true">▾</span>
+                  </button>
+                  <div data-nutrition-panel class="hidden mt-2 rounded-xl overflow-hidden border border-amber-100 bg-gradient-to-br from-amber-50/80 to-stone-50/80 shadow-inner"></div>
+                </div>
               </div>
             `}).join("");
             resultsEl?.classList.remove("hidden");
+
+            listEl.querySelectorAll("[data-view-nutrition]").forEach(btn => {
+              btn.addEventListener("click", async (e) => {
+                e.preventDefault();
+                const card = btn.closest("[data-item-name]");
+                if (!card) return;
+                const name = card.dataset.itemName || "";
+                const panel = card.querySelector("[data-nutrition-panel]");
+                const label = card.querySelector("[data-nutrition-label]");
+                const chevron = card.querySelector("[data-nutrition-chevron]");
+                if (panel.classList.contains("hidden")) {
+                  listEl.querySelectorAll("[data-nutrition-panel]").forEach(p => { p.classList.add("hidden"); });
+                  listEl.querySelectorAll("[data-nutrition-label]").forEach(l => { l.textContent = "View nutrition"; });
+                  listEl.querySelectorAll("[data-nutrition-chevron]").forEach(c => { c.textContent = "▾"; });
+                  if (!panel.dataset.loaded) {
+                    panel.innerHTML = '<div class="p-6 text-center text-amber-600 text-sm">Loading…</div>';
+                    try {
+                      const res = await fetch("/nutrition?q=" + encodeURIComponent(name));
+                      const data = await res.json();
+                      const nut = data.nutriments || {};
+                      const p = (nut.protein || 0), c = (nut.carbohydrate || 0), f = (nut.fat || 0);
+                      const totalMacro = p + c + f;
+                      const hasMacros = totalMacro > 0;
+                      const pctP = hasMacros ? (p / totalMacro) * 100 : 33.3;
+                      const pctC = hasMacros ? (c / totalMacro) * 100 : 33.3;
+                      const pctF = hasMacros ? (f / totalMacro) * 100 : 33.3;
+                      const conic = hasMacros
+                        ? `conic-gradient(#ea580c 0% ${pctP}%, #d97706 ${pctP}% ${pctP + pctC}%, #059669 ${pctP + pctC}% 100%)`
+                        : "conic-gradient(#e7e5e4 0% 100%)";
+                      const energy = nut.energy_kcal != null ? nut.energy_kcal : null;
+                      const hasAny = energy != null || hasMacros || (nut.fiber != null || nut.sugar != null || nut.sodium != null || nut.salt != null);
+                      const extras = [
+                        { icon: "🌿", label: "Fiber", val: nut.fiber, unit: "g" },
+                        { icon: "🍬", label: "Sugar", val: nut.sugar, unit: "g" },
+                        { icon: "🧂", label: "Sodium", val: nut.sodium, unit: "g" },
+                        { icon: "🧂", label: "Salt", val: nut.salt, unit: "g" }
+                      ].filter(x => x.val != null);
+                      let html = '<div class="p-5 space-y-4">';
+                      html += '<div class="flex items-center gap-4">';
+                      html += '<div class="shrink-0 w-20 h-20 rounded-full border-4 border-white shadow-md" style="background: ' + conic + '"></div>';
+                      html += '<div class="flex-1 min-w-0 space-y-1">';
+                      if (energy != null) html += '<div class="text-lg font-bold text-stone-800">' + escapeHtml(String(energy)) + ' <span class="text-sm font-normal text-stone-500">kcal</span></div>';
+                      html += '<div class="flex flex-wrap gap-x-3 gap-y-0.5 text-xs">';
+                      if (hasMacros) {
+                        html += '<span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-orange-500"></span> Protein ' + escapeHtml(String(p)) + 'g</span>';
+                        html += '<span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-amber-500"></span> Carbs ' + escapeHtml(String(c)) + 'g</span>';
+                        html += '<span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald-600"></span> Fat ' + escapeHtml(String(f)) + 'g</span>';
+                      } else {
+                        html += '<span class="text-stone-500">Macros not available</span>';
+                      }
+                      html += '</div></div></div>';
+                      if (extras.length) {
+                        html += '<div class="flex flex-wrap gap-2">';
+                        extras.forEach(x => {
+                          html += '<div class="flex items-center gap-1.5 rounded-lg bg-white/80 px-3 py-1.5 text-xs shadow-sm border border-stone-100"><span>' + x.icon + '</span><span class="text-stone-600">' + escapeHtml(x.label) + '</span><span class="font-semibold text-stone-800">' + escapeHtml(String(x.val)) + x.unit + '</span></div>';
+                        });
+                        html += '</div>';
+                      }
+                      if (data.source) html += '<div class="pt-1 text-[10px] text-stone-400">Source: Open Food Facts</div>';
+                      html += '</div>';
+                      panel.innerHTML = hasAny ? html : '<div class="p-6 text-center text-stone-500 text-sm">No nutrition data found</div>';
+                      panel.dataset.loaded = "1";
+                    } catch (err) {
+                      panel.innerHTML = '<div class="p-6 text-center text-red-600 text-sm">Failed to load</div>';
+                    }
+                  }
+                  panel.classList.remove("hidden");
+                  if (label) label.textContent = "Hide nutrition";
+                  if (chevron) chevron.textContent = "▴";
+                } else {
+                  panel.classList.add("hidden");
+                  if (label) label.textContent = "View nutrition";
+                  if (chevron) chevron.textContent = "▾";
+                }
+              });
+            });
           }
 
-          // Show cached results immediately on load (no click needed)
-          fetch(`/cached_food?patient_id=${patientId}`)
-            .then(res => res.ok ? res.json() : Promise.reject())
-            .then(data => { renderResults(data); })
-            .catch(() => {})
-            .finally(() => {
-              // Pre-warm for next time
-              fetch(`/warm_cache?patient_id=${patientId}&city=braga-norte`).catch(() => {});
-            });
+          // Show cached results on load (food + basket merged)
+          Promise.all([
+            fetch(`/cached_food?patient_id=${patientId}`).then(r => r.ok ? r.json() : null).catch(() => null),
+            fetch(`/cached_grocery_basket?patient_id=${patientId}&city=braga-norte`).then(r => r.ok ? r.json() : null).catch(() => null)
+          ]).then(([food, basket]) => {
+            const items = mergeItems(food, basket);
+            if (items.length > 0) renderResults(items);
+          }).finally(() => {
+            fetch(`/warm_cache?patient_id=${patientId}&city=braga-norte`).catch(() => {});
+          });
 
           btn.addEventListener("click", async () => {
             const spinner = document.querySelector("[data-find-food-spinner]");
@@ -258,13 +384,18 @@
             errorEl?.classList.add("hidden");
             errorEl.textContent = "";
             try {
-              const res = await fetch(`/find_food?patient_id=${patientId}`);
-              const data = await res.json();
-              if (!res.ok) {
-                const msg = data.error || "Request failed";
-                throw new Error(data.hint ? `${msg}\n\n${data.hint}` : msg);
+              const [foodRes, basketRes] = await Promise.all([
+                fetch(`/find_food?patient_id=${patientId}`),
+                fetch(`/grocery_basket?patient_id=${patientId}&city=braga-norte`)
+              ]);
+              const foodData = foodRes.ok ? await foodRes.json() : null;
+              const basketData = basketRes.ok ? await basketRes.json() : null;
+              const items = mergeItems(foodData || {}, basketData || {});
+              if (items.length === 0) {
+                const err = !foodRes.ok && foodData?.error ? foodData.error : (!basketRes.ok && basketData?.error ? basketData.error : "No items found");
+                throw new Error(err);
               }
-              renderResults(data);
+              renderResults(items);
             } catch (err) {
               errorEl.textContent = err.message;
               errorEl?.classList.remove("hidden");
@@ -274,12 +405,77 @@
               label.textContent = "Find food for <%= @selected_patient.patient_name %>";
             }
           });
-        });
+
+          document.querySelector("[data-add-to-cart]")?.addEventListener("click", async () => {
+            const basketItems = currentItems.filter(i => i.store_url || i.basket_role);
+            const storeUrl = basketItems[0]?.store_url || basketItems[0]?.restaurant_url;
+            if (!storeUrl || !basketItems.length) {
+              alert("Select a basket (grocery items) first. Basket items have a role badge.");
+              return;
+            }
+            const btn = document.querySelector("[data-add-to-cart]");
+            btn.disabled = true;
+            try {
+              const res = await fetch("/add_basket_to_cart", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]')?.content || "",
+                  "Accept": "application/json"
+                },
+                body: JSON.stringify({
+                  store_url: storeUrl,
+                  items: basketItems.map(i => ({ name: i.name }))
+                })
+              });
+              const data = await res.json();
+              if (data.message) alert(data.message);
+              if (data.added === 0 && data.failed?.length) alert("Could not add: " + data.failed.slice(0, 3).join(", ") + (data.failed.length > 3 ? "..." : ""));
+            } catch (err) {
+              alert(err.message || "Failed. Ensure API is running and CHROME_CDP_URL is set.");
+            } finally {
+              btn.disabled = false;
+            }
+          });
+
+          document.querySelector("[data-add-to-log]")?.addEventListener("click", async () => {
+            if (!currentItems.length) return;
+            const addLogBtn = document.querySelector("[data-add-to-log]");
+            addLogBtn.disabled = true;
+            try {
+              const res = await fetch("/add_to_food_log", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]')?.content || "",
+                  "Accept": "application/json"
+                },
+                body: JSON.stringify({
+                  patient_id: patientId,
+                  items: currentItems.map(i => ({ name: i.name, restaurant: i.restaurant })),
+                  meal_type: "Refeição"
+                })
+              });
+              const data = await res.json();
+              if (res.ok) window.location.reload();
+              else alert(data.error || "Failed to add to food log");
+            } catch (err) {
+              alert(err.message || "Failed to add to food log");
+            } finally {
+              addLogBtn.disabled = false;
+            }
+          });
+        }
         function escapeHtml(s) {
           const div = document.createElement("div");
           div.textContent = s || "";
           return div.innerHTML;
         }
+        function onLoad() {
+          initFindFood();
+        }
+        document.addEventListener("turbo:load", onLoad);
+        document.addEventListener("DOMContentLoaded", onLoad);
       </script>
     <% end %>
   <% else %>
