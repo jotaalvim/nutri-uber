@@ -1,10 +1,11 @@
+# -*- coding: utf-8 -*-
 import json
 import os
 import time
 
 # Configuration
 MENU_FILE = 'all_menus.json'
-PATIENT_FILE = 'nutri-approval.json'
+PATIENT_FILE = 'data/input_nutri_approval (3).jsonl'
 CACHE_FILE = 'nutrition_cache.json'
 INGREDIENT_CACHE_FILE = 'ingredient_cache.json'
 OUTPUT_FILE = 'matches.json'
@@ -14,7 +15,7 @@ FOOD_DB_FILE = 'food_database.json'
 def load_json(filepath):
     """Loads a JSON file."""
     try:
-        with open(filepath, 'r') as f:
+        with open(filepath, 'r', encoding='utf-8') as f:
             return json.load(f)
     except (FileNotFoundError, json.JSONDecodeError):
         # Return appropriate empty type
@@ -22,13 +23,13 @@ def load_json(filepath):
 
 def save_json(data, filepath):
     """Saves data to a JSON file."""
-    with open(filepath, 'w') as f:
+    with open(filepath, 'w', encoding='utf-8') as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
 
 def load_local_db():
     """Loads the local food database."""
     try:
-         with open(FOOD_DB_FILE, 'r') as f:
+         with open(FOOD_DB_FILE, 'r', encoding='utf-8') as f:
             data = json.load(f)
             return data.get('foods', [])
     except FileNotFoundError:

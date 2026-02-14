@@ -1,0 +1,949 @@
+{
+  "foods": [
+    {
+      "name": "chicken breast",
+      "keywords": ["chicken", "frango", "peito de frango", "pollo"],
+      "energy_kcal_100g": 165,
+      "proteins_100g": 31,
+      "fat_100g": 3.6,
+      "carbohydrates_100g": 0,
+      "fiber_100g": 0
+    },
+    {
+      "name": "chicken thigh",
+      "keywords": ["chicken thigh", "coxa de frango", "muslo de pollo"],
+      "energy_kcal_100g": 209,
+      "proteins_100g": 26,
+      "fat_100g": 11,
+      "carbohydrates_100g": 0,
+      "fiber_100g": 0
+    },
+    {
+      "name": "chicken drumstick",
+      "keywords": ["drumstick", "coxa", "leg"],
+      "energy_kcal_100g": 195,
+      "proteins_100g": 27,
+      "fat_100g": 9,
+      "carbohydrates_100g": 0,
+      "fiber_100g": 0
+    },
+    {
+      "name": "turkey breast",
+      "keywords": ["turkey", "peru", "pavo"],
+      "energy_kcal_100g": 135,
+      "proteins_100g": 29,
+      "fat_100g": 1.3,
+      "carbohydrates_100g": 0,
+      "fiber_100g": 0
+    },
+    {
+      "name": "rice",
+      "keywords": ["rice", "arroz", "white rice"],
+      "energy_kcal_100g": 130,
+      "proteins_100g": 2.7,
+      "fat_100g": 0.3,
+      "carbohydrates_100g": 28,
+      "fiber_100g": 0.4
+    },
+    {
+      "name": "brown rice",
+      "keywords": ["brown rice", "arroz integral"],
+      "energy_kcal_100g": 112,
+      "proteins_100g": 2.6,
+      "fat_100g": 0.9,
+      "carbohydrates_100g": 24,
+      "fiber_100g": 1.8
+    },
+    {
+      "name": "wild rice",
+      "keywords": ["wild rice", "arroz selvagem"],
+      "energy_kcal_100g": 101,
+      "proteins_100g": 3.97,
+      "fat_100g": 0.34,
+      "carbohydrates_100g": 21,
+      "fiber_100g": 1.8
+    },
+    {
+      "name": "quinoa",
+      "keywords": ["quinoa", "quinua"],
+      "energy_kcal_100g": 120,
+      "proteins_100g": 4.4,
+      "fat_100g": 1.9,
+      "carbohydrates_100g": 21.3,
+      "fiber_100g": 2.8
+    },
+    {
+      "name": "pasta",
+      "keywords": ["pasta", "macarrão", "noodles"],
+      "energy_kcal_100g": 131,
+      "proteins_100g": 5,
+      "fat_100g": 1.1,
+      "carbohydrates_100g": 25,
+      "fiber_100g": 1.8
+    },
+    {
+      "name": "whole grain pasta",
+      "keywords": ["whole grain pasta", "macarrão integral"],
+      "energy_kcal_100g": 124,
+      "proteins_100g": 7,
+      "fat_100g": 1.3,
+      "carbohydrates_100g": 21,
+      "fiber_100g": 3.7
+    },
+    {
+      "name": "broccoli",
+      "keywords": ["broccoli", "brócolis", "vegetables"],
+      "energy_kcal_100g": 34,
+      "proteins_100g": 2.8,
+      "fat_100g": 0.4,
+      "carbohydrates_100g": 7,
+      "fiber_100g": 2.4
+    },
+    {
+      "name": "cauliflower",
+      "keywords": ["cauliflower", "couve-flor"],
+      "energy_kcal_100g": 25,
+      "proteins_100g": 1.9,
+      "fat_100g": 0.3,
+      "carbohydrates_100g": 5,
+      "fiber_100g": 2.4
+    },
+    {
+      "name": "carrots",
+      "keywords": ["carrots", "cenoura", "zanahoria"],
+      "energy_kcal_100g": 41,
+      "proteins_100g": 0.92,
+      "fat_100g": 0.24,
+      "carbohydrates_100g": 10,
+      "fiber_100g": 2.8
+    },
+    {
+      "name": "bell pepper",
+      "keywords": ["bell pepper", "pimentão", "pepper"],
+      "energy_kcal_100g": 31,
+      "proteins_100g": 1,
+      "fat_100g": 0.3,
+      "carbohydrates_100g": 6,
+      "fiber_100g": 2
+    },
+    {
+      "name": "tomato",
+      "keywords": ["tomato", "tomate"],
+      "energy_kcal_100g": 18,
+      "proteins_100g": 0.88,
+      "fat_100g": 0.2,
+      "carbohydrates_100g": 3.9,
+      "fiber_100g": 1.2
+    },
+    {
+      "name": "onion",
+      "keywords": ["onion", "cebola", "cebolla"],
+      "energy_kcal_100g": 40,
+      "proteins_100g": 1.1,
+      "fat_100g": 0.1,
+      "carbohydrates_100g": 9,
+      "fiber_100g": 1.7
+    },
+    {
+      "name": "garlic",
+      "keywords": ["garlic", "alho"],
+      "energy_kcal_100g": 149,
+      "proteins_100g": 6.4,
+      "fat_100g": 0.5,
+      "carbohydrates_100g": 33,
+      "fiber_100g": 2.1
+    },
+    {
+      "name": "cucumber",
+      "keywords": ["cucumber", "pepino"],
+      "energy_kcal_100g": 16,
+      "proteins_100g": 0.65,
+      "fat_100g": 0.11,
+      "carbohydrates_100g": 3.6,
+      "fiber_100g": 0.5
+    },
+    {
+      "name": "lettuce",
+      "keywords": ["lettuce", "alface"],
+      "energy_kcal_100g": 15,
+      "proteins_100g": 1.2,
+      "fat_100g": 0.2,
+      "carbohydrates_100g": 2.9,
+      "fiber_100g": 1.2
+    },
+    {
+      "name": "kale",
+      "keywords": ["kale", "couve"],
+      "energy_kcal_100g": 49,
+      "proteins_100g": 4.3,
+      "fat_100g": 0.9,
+      "carbohydrates_100g": 9,
+      "fiber_100g": 2
+    },
+    {
+      "name": "sweet potato",
+      "keywords": ["sweet potato", "batata doce", "yam"],
+      "energy_kcal_100g": 86,
+      "proteins_100g": 1.6,
+      "fat_100g": 0.1,
+      "carbohydrates_100g": 20,
+      "fiber_100g": 3
+    },
+    {
+      "name": "regular potato",
+      "keywords": ["potato", "batata", "papa"],
+      "energy_kcal_100g": 77,
+      "proteins_100g": 2,
+      "fat_100g": 0.1,
+      "carbohydrates_100g": 17,
+      "fiber_100g": 2.1
+    },
+    {
+      "name": "pumpkin",
+      "keywords": ["pumpkin", "abóbora"],
+      "energy_kcal_100g": 26,
+      "proteins_100g": 1,
+      "fat_100g": 0.1,
+      "carbohydrates_100g": 7,
+      "fiber_100g": 0.5
+    },
+    {
+      "name": "salmon",
+      "keywords": ["salmon", "salmão", "fish"],
+      "energy_kcal_100g": 208,
+      "proteins_100g": 20,
+      "fat_100g": 13,
+      "carbohydrates_100g": 0,
+      "fiber_100g": 0
+    },
+    {
+      "name": "tuna",
+      "keywords": ["tuna", "atum"],
+      "energy_kcal_100g": 144,
+      "proteins_100g": 30,
+      "fat_100g": 1.3,
+      "carbohydrates_100g": 0,
+      "fiber_100g": 0
+    },
+    {
+      "name": "cod",
+      "keywords": ["cod", "bacalhau", "gadus"],
+      "energy_kcal_100g": 82,
+      "proteins_100g": 17.8,
+      "fat_100g": 0.7,
+      "carbohydrates_100g": 0,
+      "fiber_100g": 0
+    },
+    {
+      "name": "shrimp",
+      "keywords": ["shrimp", "camarão", "shrimp"],
+      "energy_kcal_100g": 99,
+      "proteins_100g": 24,
+      "fat_100g": 0.3,
+      "carbohydrates_100g": 0,
+      "fiber_100g": 0
+    },
+    {
+      "name": "eggs",
+      "keywords": ["eggs", "ovos", "egg"],
+      "energy_kcal_100g": 155,
+      "proteins_100g": 13,
+      "fat_100g": 11,
+      "carbohydrates_100g": 1.1,
+      "fiber_100g": 0
+    },
+    {
+      "name": "egg white",
+      "keywords": ["egg white", "clara do ovo"],
+      "energy_kcal_100g": 52,
+      "proteins_100g": 11,
+      "fat_100g": 0.2,
+      "carbohydrates_100g": 0.7,
+      "fiber_100g": 0
+    },
+    {
+      "name": "oats",
+      "keywords": ["oats", "aveia", "oatmeal"],
+      "energy_kcal_100g": 389,
+      "proteins_100g": 17,
+      "fat_100g": 6.9,
+      "carbohydrates_100g": 66,
+      "fiber_100g": 10
+    },
+    {
+      "name": "banana",
+      "keywords": ["banana", "banana", "fruit"],
+      "energy_kcal_100g": 89,
+      "proteins_100g": 1.1,
+      "fat_100g": 0.3,
+      "carbohydrates_100g": 23,
+      "fiber_100g": 2.6
+    },
+    {
+      "name": "apple",
+      "keywords": ["apple", "maçã", "manzana"],
+      "energy_kcal_100g": 52,
+      "proteins_100g": 0.26,
+      "fat_100g": 0.17,
+      "carbohydrates_100g": 14,
+      "fiber_100g": 2.4
+    },
+    {
+      "name": "orange",
+      "keywords": ["orange", "laranja"],
+      "energy_kcal_100g": 47,
+      "proteins_100g": 0.74,
+      "fat_100g": 0.12,
+      "carbohydrates_100g": 12,
+      "fiber_100g": 2.4
+    },
+    {
+      "name": "strawberry",
+      "keywords": ["strawberry", "morango"],
+      "energy_kcal_100g": 32,
+      "proteins_100g": 0.67,
+      "fat_100g": 0.3,
+      "carbohydrates_100g": 8,
+      "fiber_100g": 2
+    },
+    {
+      "name": "blueberry",
+      "keywords": ["blueberry", "mirtilo", "arándano"],
+      "energy_kcal_100g": 57,
+      "proteins_100g": 0.74,
+      "fat_100g": 0.33,
+      "carbohydrates_100g": 14,
+      "fiber_100g": 2.4
+    },
+    {
+      "name": "grapes",
+      "keywords": ["grapes", "uva"],
+      "energy_kcal_100g": 67,
+      "proteins_100g": 0.72,
+      "fat_100g": 0.16,
+      "carbohydrates_100g": 17,
+      "fiber_100g": 0.9
+    },
+    {
+      "name": "mango",
+      "keywords": ["mango", "manga"],
+      "energy_kcal_100g": 60,
+      "proteins_100g": 0.82,
+      "fat_100g": 0.38,
+      "carbohydrates_100g": 15,
+      "fiber_100g": 1.6
+    },
+    {
+      "name": "avocado",
+      "keywords": ["avocado", "abacate"],
+      "energy_kcal_100g": 160,
+      "proteins_100g": 2,
+      "fat_100g": 15,
+      "carbohydrates_100g": 9,
+      "fiber_100g": 7
+    },
+    {
+      "name": "almonds",
+      "keywords": ["almonds", "amêndoas", "nuts"],
+      "energy_kcal_100g": 579,
+      "proteins_100g": 21,
+      "fat_100g": 50,
+      "carbohydrates_100g": 22,
+      "fiber_100g": 12
+    },
+    {
+      "name": "walnuts",
+      "keywords": ["walnuts", "nozes"],
+      "energy_kcal_100g": 654,
+      "proteins_100g": 9.08,
+      "fat_100g": 65.21,
+      "carbohydrates_100g": 13.71,
+      "fiber_100g": 6.7
+    },
+    {
+      "name": "peanuts",
+      "keywords": ["peanuts", "amendoim"],
+      "energy_kcal_100g": 567,
+      "proteins_100g": 26,
+      "fat_100g": 49,
+      "carbohydrates_100g": 16,
+      "fiber_100g": 6
+    },
+    {
+      "name": "cashews",
+      "keywords": ["cashews", "caju"],
+      "energy_kcal_100g": 553,
+      "proteins_100g": 18,
+      "fat_100g": 44,
+      "carbohydrates_100g": 30,
+      "fiber_100g": 3.3
+    },
+    {
+      "name": "beef",
+      "keywords": ["beef", "carne", "carne vermelha"],
+      "energy_kcal_100g": 250,
+      "proteins_100g": 26,
+      "fat_100g": 15,
+      "carbohydrates_100g": 0,
+      "fiber_100g": 0
+    },
+    {
+      "name": "ground beef",
+      "keywords": ["ground beef", "carne moída"],
+      "energy_kcal_100g": 217,
+      "proteins_100g": 23,
+      "fat_100g": 13,
+      "carbohydrates_100g": 0,
+      "fiber_100g": 0
+    },
+    {
+      "name": "pork",
+      "keywords": ["pork", "porco", "cerdo"],
+      "energy_kcal_100g": 242,
+      "proteins_100g": 27,
+      "fat_100g": 14,
+      "carbohydrates_100g": 0,
+      "fiber_100g": 0
+    },
+    {
+      "name": "lamb",
+      "keywords": ["lamb", "cordeiro"],
+      "energy_kcal_100g": 294,
+      "proteins_100g": 25,
+      "fat_100g": 21,
+      "carbohydrates_100g": 0,
+      "fiber_100g": 0
+    },
+    {
+      "name": "beans",
+      "keywords": ["beans", "feijão", "legume"],
+      "energy_kcal_100g": 127,
+      "proteins_100g": 8.7,
+      "fat_100g": 0.5,
+      "carbohydrates_100g": 23,
+      "fiber_100g": 6.4
+    },
+    {
+      "name": "lentils",
+      "keywords": ["lentils", "lentilha"],
+      "energy_kcal_100g": 116,
+      "proteins_100g": 9,
+      "fat_100g": 0.4,
+      "carbohydrates_100g": 20,
+      "fiber_100g": 8
+    },
+    {
+      "name": "chickpeas",
+      "keywords": ["chickpeas", "grão de bico"],
+      "energy_kcal_100g": 164,
+      "proteins_100g": 8.9,
+      "fat_100g": 2.6,
+      "carbohydrates_100g": 27,
+      "fiber_100g": 7.6
+    },
+    {
+      "name": "peas",
+      "keywords": ["peas", "ervilha"],
+      "energy_kcal_100g": 81,
+      "proteins_100g": 5.4,
+      "fat_100g": 0.4,
+      "carbohydrates_100g": 14,
+      "fiber_100g": 2.4
+    },
+    {
+      "name": "tofu",
+      "keywords": ["tofu", "tofu"],
+      "energy_kcal_100g": 76,
+      "proteins_100g": 8,
+      "fat_100g": 4.8,
+      "carbohydrates_100g": 1.9,
+      "fiber_100g": 0
+    },
+    {
+      "name": "tempeh",
+      "keywords": ["tempeh", "tempeh"],
+      "energy_kcal_100g": 195,
+      "proteins_100g": 19,
+      "fat_100g": 11,
+      "carbohydrates_100g": 9.4,
+      "fiber_100g": 0
+    },
+    {
+      "name": "olive oil",
+      "keywords": ["olive oil", "azeite", "oil"],
+      "energy_kcal_100g": 884,
+      "proteins_100g": 0,
+      "fat_100g": 100,
+      "carbohydrates_100g": 0,
+      "fiber_100g": 0
+    },
+    {
+      "name": "coconut oil",
+      "keywords": ["coconut oil", "óleo de coco"],
+      "energy_kcal_100g": 892,
+      "proteins_100g": 0,
+      "fat_100g": 99.1,
+      "carbohydrates_100g": 0,
+      "fiber_100g": 0
+    },
+    {
+      "name": "butter",
+      "keywords": ["butter", "manteiga"],
+      "energy_kcal_100g": 717,
+      "proteins_100g": 0.85,
+      "fat_100g": 81,
+      "carbohydrates_100g": 0.06,
+      "fiber_100g": 0
+    },
+    {
+      "name": "greek yogurt",
+      "keywords": ["yogurt", "iogurte", "yogur"],
+      "energy_kcal_100g": 59,
+      "proteins_100g": 10,
+      "fat_100g": 0.4,
+      "carbohydrates_100g": 3.3,
+      "fiber_100g": 0
+    },
+    {
+      "name": "regular yogurt",
+      "keywords": ["yogurt", "iogurte"],
+      "energy_kcal_100g": 61,
+      "proteins_100g": 3.5,
+      "fat_100g": 0.4,
+      "carbohydrates_100g": 5,
+      "fiber_100g": 0
+    },
+    {
+      "name": "milk",
+      "keywords": ["milk", "leite"],
+      "energy_kcal_100g": 61,
+      "proteins_100g": 3.2,
+      "fat_100g": 3.3,
+      "carbohydrates_100g": 4.8,
+      "fiber_100g": 0
+    },
+    {
+      "name": "cheese",
+      "keywords": ["cheese", "queijo"],
+      "energy_kcal_100g": 402,
+      "proteins_100g": 25,
+      "fat_100g": 33,
+      "carbohydrates_100g": 1.3,
+      "fiber_100g": 0
+    },
+    {
+      "name": "cottage cheese",
+      "keywords": ["cottage cheese", "queijo cottage"],
+      "energy_kcal_100g": 98,
+      "proteins_100g": 11,
+      "fat_100g": 5,
+      "carbohydrates_100g": 3.4,
+      "fiber_100g": 0
+    },
+    {
+      "name": "whole wheat bread",
+      "keywords": ["bread", "pão", "whole wheat"],
+      "energy_kcal_100g": 247,
+      "proteins_100g": 8.5,
+      "fat_100g": 3.3,
+      "carbohydrates_100g": 41,
+      "fiber_100g": 7
+    },
+    {
+      "name": "white bread",
+      "keywords": ["white bread", "pão branco"],
+      "energy_kcal_100g": 265,
+      "proteins_100g": 9,
+      "fat_100g": 3.3,
+      "carbohydrates_100g": 49,
+      "fiber_100g": 2.7
+    },
+    {
+      "name": "spinach",
+      "keywords": ["spinach", "espinafre", "vegetables"],
+      "energy_kcal_100g": 23,
+      "proteins_100g": 2.9,
+      "fat_100g": 0.4,
+      "carbohydrates_100g": 3.6,
+      "fiber_100g": 2.2
+    },
+    {
+      "name": "asparagus",
+      "keywords": ["asparagus", "aspargo"],
+      "energy_kcal_100g": 20,
+      "proteins_100g": 2.2,
+      "fat_100g": 0.1,
+      "carbohydrates_100g": 3.7,
+      "fiber_100g": 2.1
+    },
+    {
+      "name": "zucchini",
+      "keywords": ["zucchini", "abobrinha"],
+      "energy_kcal_100g": 17,
+      "proteins_100g": 1.5,
+      "fat_100g": 0.4,
+      "carbohydrates_100g": 3.1,
+      "fiber_100g": 1
+    },
+    {
+      "name": "eggplant",
+      "keywords": ["eggplant", "berinjela"],
+      "energy_kcal_100g": 25,
+      "proteins_100g": 0.98,
+      "fat_100g": 0.18,
+      "carbohydrates_100g": 5.9,
+      "fiber_100g": 3
+    },
+    {
+      "name": "mushrooms",
+      "keywords": ["mushrooms", "cogumelos"],
+      "energy_kcal_100g": 22,
+      "proteins_100g": 3.1,
+      "fat_100g": 0.3,
+      "carbohydrates_100g": 3.3,
+      "fiber_100g": 1
+    },
+    {
+      "name": "corn",
+      "keywords": ["corn", "milho", "sweetcorn"],
+      "energy_kcal_100g": 86,
+      "proteins_100g": 3.2,
+      "fat_100g": 1.2,
+      "carbohydrates_100g": 19,
+      "fiber_100g": 2.7
+    },
+    {
+      "name": "pumpkin seeds",
+      "keywords": ["pumpkin seeds", "sementes de abóbora"],
+      "energy_kcal_100g": 559,
+      "proteins_100g": 30,
+      "fat_100g": 49,
+      "carbohydrates_100g": 11,
+      "fiber_100g": 1.1
+    },
+    {
+      "name": "sunflower seeds",
+      "keywords": ["sunflower seeds", "sementes de girassol"],
+      "energy_kcal_100g": 584,
+      "proteins_100g": 21,
+      "fat_100g": 51,
+      "carbohydrates_100g": 20,
+      "fiber_100g": 2.4
+    },
+    {
+      "name": "flaxseeds",
+      "keywords": ["flaxseeds", "linhaça"],
+      "energy_kcal_100g": 534,
+      "proteins_100g": 18,
+      "fat_100g": 42,
+      "carbohydrates_100g": 29,
+      "fiber_100g": 28
+    },
+    {
+      "name": "chia seeds",
+      "keywords": ["chia seeds", "sementes de chia"],
+      "energy_kcal_100g": 486,
+      "proteins_100g": 17,
+      "fat_100g": 31,
+      "carbohydrates_100g": 42,
+      "fiber_100g": 34
+    },
+    {
+      "name": "honey",
+      "keywords": ["honey", "mel"],
+      "energy_kcal_100g": 304,
+      "proteins_100g": 0.3,
+      "fat_100g": 0,
+      "carbohydrates_100g": 82,
+      "fiber_100g": 0.2
+    },
+    {
+      "name": "dark chocolate",
+      "keywords": ["dark chocolate", "chocolate escuro"],
+      "energy_kcal_100g": 598,
+      "proteins_100g": 12,
+      "fat_100g": 43,
+      "carbohydrates_100g": 46,
+      "fiber_100g": 9
+    },
+    {
+      "name": "almondmilk",
+      "keywords": ["almondmilk", "leite de amêndoa"],
+      "energy_kcal_100g": 30,
+      "proteins_100g": 1,
+      "fat_100g": 2.5,
+      "carbohydrates_100g": 1.3,
+      "fiber_100g": 0.4
+    },
+    {
+      "name": "coconut milk",
+      "keywords": ["coconut milk", "leite de coco"],
+      "energy_kcal_100g": 230,
+      "proteins_100g": 2.3,
+      "fat_100g": 23,
+      "carbohydrates_100g": 5.5,
+      "fiber_100g": 0
+    },
+    {
+      "name": "pineapple",
+      "keywords": ["pineapple", "abacaxi"],
+      "energy_kcal_100g": 50,
+      "proteins_100g": 0.54,
+      "fat_100g": 0.12,
+      "carbohydrates_100g": 13,
+      "fiber_100g": 1.4
+    },
+    {
+      "name": "papaya",
+      "keywords": ["papaya", "mamão"],
+      "energy_kcal_100g": 43,
+      "proteins_100g": 0.47,
+      "fat_100g": 0.26,
+      "carbohydrates_100g": 11,
+      "fiber_100g": 1.7
+    },
+    {
+      "name": "watermelon",
+      "keywords": ["watermelon", "melancia"],
+      "energy_kcal_100g": 30,
+      "proteins_100g": 0.61,
+      "fat_100g": 0.15,
+      "carbohydrates_100g": 7.6,
+      "fiber_100g": 0.4
+    },
+    {
+      "name": "melon",
+      "keywords": ["melon", "melão"],
+      "energy_kcal_100g": 34,
+      "proteins_100g": 0.84,
+      "fat_100g": 0.19,
+      "carbohydrates_100g": 8,
+      "fiber_100g": 0.9
+    },
+    {
+      "name": "kiwi",
+      "keywords": ["kiwi", "kiwi"],
+      "energy_kcal_100g": 61,
+      "proteins_100g": 1.1,
+      "fat_100g": 0.5,
+      "carbohydrates_100g": 15,
+      "fiber_100g": 3
+    },
+    {
+      "name": "peach",
+      "keywords": ["peach", "pêssego"],
+      "energy_kcal_100g": 39,
+      "proteins_100g": 0.9,
+      "fat_100g": 0.25,
+      "carbohydrates_100g": 10,
+      "fiber_100g": 1.5
+    },
+    {
+      "name": "plum",
+      "keywords": ["plum", "ameixa"],
+      "energy_kcal_100g": 46,
+      "proteins_100g": 0.7,
+      "fat_100g": 0.28,
+      "carbohydrates_100g": 11,
+      "fiber_100g": 1.4
+    },
+    {
+      "name": "raspberry",
+      "keywords": ["raspberry", "framboesa"],
+      "energy_kcal_100g": 52,
+      "proteins_100g": 1.2,
+      "fat_100g": 0.65,
+      "carbohydrates_100g": 12,
+      "fiber_100g": 6.5
+    },
+    {
+      "name": "blackberry",
+      "keywords": ["blackberry", "amora"],
+      "energy_kcal_100g": 43,
+      "proteins_100g": 1.4,
+      "fat_100g": 0.49,
+      "carbohydrates_100g": 10,
+      "fiber_100g": 5.3
+    },
+    {
+      "name": "lemon",
+      "keywords": ["lemon", "limão"],
+      "energy_kcal_100g": 29,
+      "proteins_100g": 1.1,
+      "fat_100g": 0.3,
+      "carbohydrates_100g": 9,
+      "fiber_100g": 2.8
+    },
+    {
+      "name": "lime",
+      "keywords": ["lime", "limão verde"],
+      "energy_kcal_100g": 30,
+      "proteins_100g": 0.7,
+      "fat_100g": 0.2,
+      "carbohydrates_100g": 11,
+      "fiber_100g": 2.8
+    },
+    {
+      "name": "pear",
+      "keywords": ["pear", "pêra"],
+      "energy_kcal_100g": 57,
+      "proteins_100g": 0.36,
+      "fat_100g": 0.14,
+      "carbohydrates_100g": 15,
+      "fiber_100g": 2.8
+    },
+    {
+      "name": "grapefruit",
+      "keywords": ["grapefruit", "toranja"],
+      "energy_kcal_100g": 42,
+      "proteins_100g": 0.77,
+      "fat_100g": 0.14,
+      "carbohydrates_100g": 11,
+      "fiber_100g": 1.6
+    },
+    {
+      "name": "pomegranate",
+      "keywords": ["pomegranate", "romã"],
+      "energy_kcal_100g": 83,
+      "proteins_100g": 1.7,
+      "fat_100g": 1.2,
+      "carbohydrates_100g": 19,
+      "fiber_100g": 4
+    },
+    {
+      "name": "hazelnuts",
+      "keywords": ["hazelnuts", "avelã"],
+      "energy_kcal_100g": 628,
+      "proteins_100g": 15,
+      "fat_100g": 61,
+      "carbohydrates_100g": 17,
+      "fiber_100g": 10
+    },
+    {
+      "name": "pecans",
+      "keywords": ["pecans", "nozes-pecan"],
+      "energy_kcal_100g": 691,
+      "proteins_100g": 9,
+      "fat_100g": 72,
+      "carbohydrates_100g": 14,
+      "fiber_100g": 8.7
+    },
+    {
+      "name": "pistachios",
+      "keywords": ["pistachios", "pistache"],
+      "energy_kcal_100g": 562,
+      "proteins_100g": 20,
+      "fat_100g": 45,
+      "carbohydrates_100g": 28,
+      "fiber_100g": 10
+    },
+    {
+      "name": "brazil nuts",
+      "keywords": ["brazil nuts", "castanha do brasil"],
+      "energy_kcal_100g": 656,
+      "proteins_100g": 14,
+      "fat_100g": 66,
+      "carbohydrates_100g": 12,
+      "fiber_100g": 2.1
+    },
+    {
+      "name": "macadamia nuts",
+      "keywords": ["macadamia nuts", "macadâmia"],
+      "energy_kcal_100g": 718,
+      "proteins_100g": 7.8,
+      "fat_100g": 76,
+      "carbohydrates_100g": 14,
+      "fiber_100g": 8.6
+    },
+    {
+      "name": "pumpkin puree",
+      "keywords": ["pumpkin puree", "purê de abóbora"],
+      "energy_kcal_100g": 42,
+      "proteins_100g": 1,
+      "fat_100g": 0.1,
+      "carbohydrates_100g": 10,
+      "fiber_100g": 1.7
+    },
+    {
+      "name": "veggie burger",
+      "keywords": ["veggie burger", "hambúrguer vegetariano"],
+      "energy_kcal_100g": 148,
+      "proteins_100g": 12,
+      "fat_100g": 7,
+      "carbohydrates_100g": 11,
+      "fiber_100g": 2.5
+    },
+    {
+      "name": "whole grain cereal",
+      "keywords": ["cereal", "cereal integral", "granola"],
+      "energy_kcal_100g": 370,
+      "proteins_100g": 10,
+      "fat_100g": 7,
+      "carbohydrates_100g": 73,
+      "fiber_100g": 8
+    },
+    {
+      "name": "granola",
+      "keywords": ["granola", "granola"],
+      "energy_kcal_100g": 471,
+      "proteins_100g": 11,
+      "fat_100g": 20,
+      "carbohydrates_100g": 64,
+      "fiber_100g": 7
+    },
+    {
+      "name": "greek salad",
+      "keywords": ["salad", "salada", "greek"],
+      "energy_kcal_100g": 49,
+      "proteins_100g": 3.1,
+      "fat_100g": 2.5,
+      "carbohydrates_100g": 4.5,
+      "fiber_100g": 1
+    },
+    {
+      "name": "pesto",
+      "keywords": ["pesto", "pesto"],
+      "energy_kcal_100g": 296,
+      "proteins_100g": 7,
+      "fat_100g": 27,
+      "carbohydrates_100g": 8,
+      "fiber_100g": 2.2
+    },
+    {
+      "name": "hummus",
+      "keywords": ["hummus", "hummus"],
+      "energy_kcal_100g": 166,
+      "proteins_100g": 5.6,
+      "fat_100g": 9,
+      "carbohydrates_100g": 14,
+      "fiber_100g": 3.8
+    },
+    {
+      "name": "tahini",
+      "keywords": ["tahini", "tahine"],
+      "energy_kcal_100g": 595,
+      "proteins_100g": 17,
+      "fat_100g": 54,
+      "carbohydrates_100g": 21,
+      "fiber_100g": 9.7
+    },
+    {
+      "name": "almond butter",
+      "keywords": ["almond butter", "manteiga de amêndoa"],
+      "energy_kcal_100g": 588,
+      "proteins_100g": 22,
+      "fat_100g": 50,
+      "carbohydrates_100g": 21,
+      "fiber_100g": 10
+    },
+    {
+      "name": "peanut butter",
+      "keywords": ["peanut butter", "manteiga de amendoim"],
+      "energy_kcal_100g": 594,
+      "proteins_100g": 25,
+      "fat_100g": 50,
+      "carbohydrates_100g": 20,
+      "fiber_100g": 6
+    }
+  ]
+}

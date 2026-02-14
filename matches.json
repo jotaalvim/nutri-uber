@@ -1,0 +1,602 @@
+[
+  {
+    "patient": "Paciente 1",
+    "target_ratios": {
+      "fat": 0.1,
+      "carb": 0.51,
+      "protein": 0.39
+    },
+    "top_matches": [
+      {
+        "item_name": "Ravioli de Ricotta e Espinafres",
+        "price": "€6.93",
+        "nutrition_per_100g": {
+          "energy_kcal_100g": 23.0,
+          "proteins_100g": 2.9,
+          "fat_100g": 0.4,
+          "carbohydrates_100g": 3.6,
+          "fiber_100g": 2.2
+        },
+        "macros_ratio": {
+          "fat": 0.06,
+          "carb": 0.52,
+          "protein": 0.42
+        },
+        "fit_score": 0.0027,
+        "matched_product_name": "spinach"
+      },
+      {
+        "item_name": "Espinafres Salteados",
+        "price": "€2.75",
+        "nutrition_per_100g": {
+          "energy_kcal_100g": 23.0,
+          "proteins_100g": 2.9,
+          "fat_100g": 0.4,
+          "carbohydrates_100g": 3.6,
+          "fiber_100g": 2.2
+        },
+        "macros_ratio": {
+          "fat": 0.06,
+          "carb": 0.52,
+          "protein": 0.42
+        },
+        "fit_score": 0.0027,
+        "matched_product_name": "spinach"
+      },
+      {
+        "item_name": "Quiche de Requeijão e Espinafres",
+        "price": "€3.95",
+        "nutrition_per_100g": {
+          "energy_kcal_100g": 23.0,
+          "proteins_100g": 2.9,
+          "fat_100g": 0.4,
+          "carbohydrates_100g": 3.6,
+          "fiber_100g": 2.2
+        },
+        "macros_ratio": {
+          "fat": 0.06,
+          "carb": 0.52,
+          "protein": 0.42
+        },
+        "fit_score": 0.0027,
+        "matched_product_name": "spinach"
+      },
+      {
+        "item_name": "Cogumelos à Bulhão Pato",
+        "price": "€8.00",
+        "nutrition_per_100g": {
+          "energy_kcal_100g": 22.0,
+          "proteins_100g": 3.1,
+          "fat_100g": 0.3,
+          "carbohydrates_100g": 3.3,
+          "fiber_100g": 1.0
+        },
+        "macros_ratio": {
+          "fat": 0.04,
+          "carb": 0.49,
+          "protein": 0.46
+        },
+        "fit_score": 0.008,
+        "matched_product_name": "mushrooms"
+      },
+      {
+        "item_name": "Cogumelos Salteados",
+        "price": "€7.90",
+        "nutrition_per_100g": {
+          "energy_kcal_100g": 22.0,
+          "proteins_100g": 3.1,
+          "fat_100g": 0.3,
+          "carbohydrates_100g": 3.3,
+          "fiber_100g": 1.0
+        },
+        "macros_ratio": {
+          "fat": 0.04,
+          "carb": 0.49,
+          "protein": 0.46
+        },
+        "fit_score": 0.008,
+        "matched_product_name": "mushrooms"
+      }
+    ]
+  },
+  {
+    "patient": "Paciente 2",
+    "target_ratios": {
+      "fat": 0.13,
+      "carb": 0.58,
+      "protein": 0.29
+    },
+    "top_matches": [
+      {
+        "item_name": "Couves Também Enfardam",
+        "price": "€12.35",
+        "nutrition_per_100g": {
+          "energy_kcal_100g": 49.0,
+          "proteins_100g": 4.3,
+          "fat_100g": 0.9,
+          "carbohydrates_100g": 9.0,
+          "fiber_100g": 2.0
+        },
+        "macros_ratio": {
+          "fat": 0.06,
+          "carb": 0.63,
+          "protein": 0.3
+        },
+        "fit_score": 0.0073,
+        "matched_product_name": "kale"
+      },
+      {
+        "item_name": "Iogurte com Compota de Framboesa e Granola",
+        "price": "€2.95",
+        "nutrition_per_100g": {
+          "energy_kcal_100g": 265.0,
+          "proteins_100g": 10.5,
+          "fat_100g": 10.2,
+          "carbohydrates_100g": 33.65,
+          "fiber_100g": 3.5
+        },
+        "macros_ratio": {
+          "fat": 0.19,
+          "carb": 0.62,
+          "protein": 0.19
+        },
+        "fit_score": 0.0144,
+        "matched_product_name": "greek yogurt + granola"
+      },
+      {
+        "item_name": "Estufado de Lentilhas e Cogumelos Shitake",
+        "price": "€15.47",
+        "nutrition_per_100g": {
+          "energy_kcal_100g": 69.0,
+          "proteins_100g": 6.05,
+          "fat_100g": 0.35,
+          "carbohydrates_100g": 11.65,
+          "fiber_100g": 4.5
+        },
+        "macros_ratio": {
+          "fat": 0.02,
+          "carb": 0.65,
+          "protein": 0.34
+        },
+        "fit_score": 0.0182,
+        "matched_product_name": "lentils + mushrooms"
+      },
+      {
+        "item_name": "H3mp Fried Cauliflower",
+        "price": "€10.00",
+        "nutrition_per_100g": {
+          "energy_kcal_100g": 25.0,
+          "proteins_100g": 1.9,
+          "fat_100g": 0.3,
+          "carbohydrates_100g": 5.0,
+          "fiber_100g": 2.4
+        },
+        "macros_ratio": {
+          "fat": 0.04,
+          "carb": 0.69,
+          "protein": 0.26
+        },
+        "fit_score": 0.0213,
+        "matched_product_name": "cauliflower"
+      },
+      {
+        "item_name": "Tofu com Migas de Couve-Flor",
+        "price": "€9.50",
+        "nutrition_per_100g": {
+          "energy_kcal_100g": 25.0,
+          "proteins_100g": 1.9,
+          "fat_100g": 0.3,
+          "carbohydrates_100g": 5.0,
+          "fiber_100g": 2.4
+        },
+        "macros_ratio": {
+          "fat": 0.04,
+          "carb": 0.69,
+          "protein": 0.26
+        },
+        "fit_score": 0.0213,
+        "matched_product_name": "cauliflower"
+      }
+    ]
+  },
+  {
+    "patient": "Paciente 3",
+    "target_ratios": {
+      "fat": 0.13,
+      "carb": 0.64,
+      "protein": 0.23
+    },
+    "top_matches": [
+      {
+        "item_name": "Iogurte com Compota de Framboesa e Granola",
+        "price": "€2.95",
+        "nutrition_per_100g": {
+          "energy_kcal_100g": 265.0,
+          "proteins_100g": 10.5,
+          "fat_100g": 10.2,
+          "carbohydrates_100g": 33.65,
+          "fiber_100g": 3.5
+        },
+        "macros_ratio": {
+          "fat": 0.19,
+          "carb": 0.62,
+          "protein": 0.19
+        },
+        "fit_score": 0.0053,
+        "matched_product_name": "greek yogurt + granola"
+      },
+      {
+        "item_name": "Couves Também Enfardam",
+        "price": "€12.35",
+        "nutrition_per_100g": {
+          "energy_kcal_100g": 49.0,
+          "proteins_100g": 4.3,
+          "fat_100g": 0.9,
+          "carbohydrates_100g": 9.0,
+          "fiber_100g": 2.0
+        },
+        "macros_ratio": {
+          "fat": 0.06,
+          "carb": 0.63,
+          "protein": 0.3
+        },
+        "fit_score": 0.0093,
+        "matched_product_name": "kale"
+      },
+      {
+        "item_name": "H3mp Fried Cauliflower",
+        "price": "€10.00",
+        "nutrition_per_100g": {
+          "energy_kcal_100g": 25.0,
+          "proteins_100g": 1.9,
+          "fat_100g": 0.3,
+          "carbohydrates_100g": 5.0,
+          "fiber_100g": 2.4
+        },
+        "macros_ratio": {
+          "fat": 0.04,
+          "carb": 0.69,
+          "protein": 0.26
+        },
+        "fit_score": 0.0117,
+        "matched_product_name": "cauliflower"
+      },
+      {
+        "item_name": "Tofu com Migas de Couve-Flor",
+        "price": "€9.50",
+        "nutrition_per_100g": {
+          "energy_kcal_100g": 25.0,
+          "proteins_100g": 1.9,
+          "fat_100g": 0.3,
+          "carbohydrates_100g": 5.0,
+          "fiber_100g": 2.4
+        },
+        "macros_ratio": {
+          "fat": 0.04,
+          "carb": 0.69,
+          "protein": 0.26
+        },
+        "fit_score": 0.0117,
+        "matched_product_name": "cauliflower"
+      },
+      {
+        "item_name": "59. Frango kebab, pimento vermelho e molho alioli",
+        "price": "€2.10",
+        "nutrition_per_100g": {
+          "energy_kcal_100g": 234.5,
+          "proteins_100g": 15.65,
+          "fat_100g": 1.8,
+          "carbohydrates_100g": 41.0,
+          "fiber_100g": 0.1
+        },
+        "macros_ratio": {
+          "fat": 0.03,
+          "carb": 0.7,
+          "protein": 0.27
+        },
+        "fit_score": 0.0148,
+        "matched_product_name": "chicken breast + honey"
+      }
+    ]
+  },
+  {
+    "patient": "Paciente 5",
+    "target_ratios": {
+      "fat": 0.11,
+      "carb": 0.57,
+      "protein": 0.32
+    },
+    "top_matches": [
+      {
+        "item_name": "Couves Também Enfardam",
+        "price": "€12.35",
+        "nutrition_per_100g": {
+          "energy_kcal_100g": 49.0,
+          "proteins_100g": 4.3,
+          "fat_100g": 0.9,
+          "carbohydrates_100g": 9.0,
+          "fiber_100g": 2.0
+        },
+        "macros_ratio": {
+          "fat": 0.06,
+          "carb": 0.63,
+          "protein": 0.3
+        },
+        "fit_score": 0.0067,
+        "matched_product_name": "kale"
+      },
+      {
+        "item_name": "Estufado de Lentilhas e Cogumelos Shitake",
+        "price": "€15.47",
+        "nutrition_per_100g": {
+          "energy_kcal_100g": 69.0,
+          "proteins_100g": 6.05,
+          "fat_100g": 0.35,
+          "carbohydrates_100g": 11.65,
+          "fiber_100g": 4.5
+        },
+        "macros_ratio": {
+          "fat": 0.02,
+          "carb": 0.65,
+          "protein": 0.34
+        },
+        "fit_score": 0.0145,
+        "matched_product_name": "lentils + mushrooms"
+      },
+      {
+        "item_name": "Ravioli de Ricotta e Espinafres",
+        "price": "€6.93",
+        "nutrition_per_100g": {
+          "energy_kcal_100g": 23.0,
+          "proteins_100g": 2.9,
+          "fat_100g": 0.4,
+          "carbohydrates_100g": 3.6,
+          "fiber_100g": 2.2
+        },
+        "macros_ratio": {
+          "fat": 0.06,
+          "carb": 0.52,
+          "protein": 0.42
+        },
+        "fit_score": 0.0154,
+        "matched_product_name": "spinach"
+      },
+      {
+        "item_name": "Espinafres Salteados",
+        "price": "€2.75",
+        "nutrition_per_100g": {
+          "energy_kcal_100g": 23.0,
+          "proteins_100g": 2.9,
+          "fat_100g": 0.4,
+          "carbohydrates_100g": 3.6,
+          "fiber_100g": 2.2
+        },
+        "macros_ratio": {
+          "fat": 0.06,
+          "carb": 0.52,
+          "protein": 0.42
+        },
+        "fit_score": 0.0154,
+        "matched_product_name": "spinach"
+      },
+      {
+        "item_name": "Quiche de Requeijão e Espinafres",
+        "price": "€3.95",
+        "nutrition_per_100g": {
+          "energy_kcal_100g": 23.0,
+          "proteins_100g": 2.9,
+          "fat_100g": 0.4,
+          "carbohydrates_100g": 3.6,
+          "fiber_100g": 2.2
+        },
+        "macros_ratio": {
+          "fat": 0.06,
+          "carb": 0.52,
+          "protein": 0.42
+        },
+        "fit_score": 0.0154,
+        "matched_product_name": "spinach"
+      }
+    ]
+  },
+  {
+    "patient": "Paciente 6",
+    "target_ratios": {
+      "fat": 0.11,
+      "carb": 0.57,
+      "protein": 0.32
+    },
+    "top_matches": [
+      {
+        "item_name": "Couves Também Enfardam",
+        "price": "€12.35",
+        "nutrition_per_100g": {
+          "energy_kcal_100g": 49.0,
+          "proteins_100g": 4.3,
+          "fat_100g": 0.9,
+          "carbohydrates_100g": 9.0,
+          "fiber_100g": 2.0
+        },
+        "macros_ratio": {
+          "fat": 0.06,
+          "carb": 0.63,
+          "protein": 0.3
+        },
+        "fit_score": 0.0067,
+        "matched_product_name": "kale"
+      },
+      {
+        "item_name": "Estufado de Lentilhas e Cogumelos Shitake",
+        "price": "€15.47",
+        "nutrition_per_100g": {
+          "energy_kcal_100g": 69.0,
+          "proteins_100g": 6.05,
+          "fat_100g": 0.35,
+          "carbohydrates_100g": 11.65,
+          "fiber_100g": 4.5
+        },
+        "macros_ratio": {
+          "fat": 0.02,
+          "carb": 0.65,
+          "protein": 0.34
+        },
+        "fit_score": 0.0145,
+        "matched_product_name": "lentils + mushrooms"
+      },
+      {
+        "item_name": "Ravioli de Ricotta e Espinafres",
+        "price": "€6.93",
+        "nutrition_per_100g": {
+          "energy_kcal_100g": 23.0,
+          "proteins_100g": 2.9,
+          "fat_100g": 0.4,
+          "carbohydrates_100g": 3.6,
+          "fiber_100g": 2.2
+        },
+        "macros_ratio": {
+          "fat": 0.06,
+          "carb": 0.52,
+          "protein": 0.42
+        },
+        "fit_score": 0.0154,
+        "matched_product_name": "spinach"
+      },
+      {
+        "item_name": "Espinafres Salteados",
+        "price": "€2.75",
+        "nutrition_per_100g": {
+          "energy_kcal_100g": 23.0,
+          "proteins_100g": 2.9,
+          "fat_100g": 0.4,
+          "carbohydrates_100g": 3.6,
+          "fiber_100g": 2.2
+        },
+        "macros_ratio": {
+          "fat": 0.06,
+          "carb": 0.52,
+          "protein": 0.42
+        },
+        "fit_score": 0.0154,
+        "matched_product_name": "spinach"
+      },
+      {
+        "item_name": "Quiche de Requeijão e Espinafres",
+        "price": "€3.95",
+        "nutrition_per_100g": {
+          "energy_kcal_100g": 23.0,
+          "proteins_100g": 2.9,
+          "fat_100g": 0.4,
+          "carbohydrates_100g": 3.6,
+          "fiber_100g": 2.2
+        },
+        "macros_ratio": {
+          "fat": 0.06,
+          "carb": 0.52,
+          "protein": 0.42
+        },
+        "fit_score": 0.0154,
+        "matched_product_name": "spinach"
+      }
+    ]
+  },
+  {
+    "patient": "Paciente 7",
+    "target_ratios": {
+      "fat": 0.11,
+      "carb": 0.57,
+      "protein": 0.32
+    },
+    "top_matches": [
+      {
+        "item_name": "Couves Também Enfardam",
+        "price": "€12.35",
+        "nutrition_per_100g": {
+          "energy_kcal_100g": 49.0,
+          "proteins_100g": 4.3,
+          "fat_100g": 0.9,
+          "carbohydrates_100g": 9.0,
+          "fiber_100g": 2.0
+        },
+        "macros_ratio": {
+          "fat": 0.06,
+          "carb": 0.63,
+          "protein": 0.3
+        },
+        "fit_score": 0.0067,
+        "matched_product_name": "kale"
+      },
+      {
+        "item_name": "Estufado de Lentilhas e Cogumelos Shitake",
+        "price": "€15.47",
+        "nutrition_per_100g": {
+          "energy_kcal_100g": 69.0,
+          "proteins_100g": 6.05,
+          "fat_100g": 0.35,
+          "carbohydrates_100g": 11.65,
+          "fiber_100g": 4.5
+        },
+        "macros_ratio": {
+          "fat": 0.02,
+          "carb": 0.65,
+          "protein": 0.34
+        },
+        "fit_score": 0.0145,
+        "matched_product_name": "lentils + mushrooms"
+      },
+      {
+        "item_name": "Ravioli de Ricotta e Espinafres",
+        "price": "€6.93",
+        "nutrition_per_100g": {
+          "energy_kcal_100g": 23.0,
+          "proteins_100g": 2.9,
+          "fat_100g": 0.4,
+          "carbohydrates_100g": 3.6,
+          "fiber_100g": 2.2
+        },
+        "macros_ratio": {
+          "fat": 0.06,
+          "carb": 0.52,
+          "protein": 0.42
+        },
+        "fit_score": 0.0154,
+        "matched_product_name": "spinach"
+      },
+      {
+        "item_name": "Espinafres Salteados",
+        "price": "€2.75",
+        "nutrition_per_100g": {
+          "energy_kcal_100g": 23.0,
+          "proteins_100g": 2.9,
+          "fat_100g": 0.4,
+          "carbohydrates_100g": 3.6,
+          "fiber_100g": 2.2
+        },
+        "macros_ratio": {
+          "fat": 0.06,
+          "carb": 0.52,
+          "protein": 0.42
+        },
+        "fit_score": 0.0154,
+        "matched_product_name": "spinach"
+      },
+      {
+        "item_name": "Quiche de Requeijão e Espinafres",
+        "price": "€3.95",
+        "nutrition_per_100g": {
+          "energy_kcal_100g": 23.0,
+          "proteins_100g": 2.9,
+          "fat_100g": 0.4,
+          "carbohydrates_100g": 3.6,
+          "fiber_100g": 2.2
+        },
+        "macros_ratio": {
+          "fat": 0.06,
+          "carb": 0.52,
+          "protein": 0.42
+        },
+        "fit_score": 0.0154,
+        "matched_product_name": "spinach"
+      }
+    ]
+  }
+]
