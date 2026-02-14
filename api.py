@@ -502,6 +502,57 @@ def nutrition():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/bowel_impact", methods=["POST"])
+def bowel_impact():
+    """
+    Estimate how a food might affect bowel movement for the patient.
+    POST /bowel_impact with JSON: { "patient_infos": {...}, "food_item": { "name": "...", "description": "..." } }
+    Returns: { "message": str } - short message in Portuguese about bowel impact
+    """
+    try:
+        data = request.get_json() or {}
+        patient_infos = data.get("patient_infos") or {}
+        food_item = data.get("food_item") or {}
+        food_name = (food_item.get("name") or "").strip()
+        food_desc = (food_item.get("description") or "").strip()
+
+        if not food_name:
+            return jsonify({"message": None})
+
+        bowel = patient_infos.get("bowel_movements") or {}
+        bowel_type = (bowel.get("type") or "").strip()
+        bowel_details = (bowel.get("details") or "").strip()
+
+        api_key = os.environ.get("OPENAI_API_KEY", "").strip()
+        if not api_key:
+            return jsonify({"message": None})
+
+        try:
+            from openai import OpenAI
+            client = OpenAI(api_key=api_key)
+        except ImportError:
+            return jsonify({"message": None})
+
+        prompt = f"""You are a clinical nutritionist. Give a brief, friendly message about how this food might affect bowel movement.
+
+PATIENT BOWEL STATUS: {bowel_type or "Not specified"}. {bowel_details or ""}
+
+FOOD: {food_name}
+{f"Description: {food_desc}" if food_desc else ""}
+
+Consider: fiber content (promotes regularity), fat (can slow digestion), spicy/irritating foods, dairy (lactose), caffeine, alcohol. Give 1-2 sentences in Portuguese. Be helpful and non-alarming. If the food is neutral, say something brief like: Este prato não deve ter impacto significativo no trânsito intestinal."""
+
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=150,
+        )
+        reply = (response.choices[0].message.content or "").strip()
+        return jsonify({"message": reply if reply else None})
+    except Exception as e:
+        return jsonify({"message": None, "error": str(e)})
+
+
 @app.route("/check_food_medication", methods=["POST"])
 def check_food_medication():
     """

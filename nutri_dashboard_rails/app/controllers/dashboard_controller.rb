@@ -4,7 +4,7 @@ require "net/http"
 require "json"
 
 class DashboardController < ApplicationController
-  skip_before_action :verify_authenticity_token, only: [:nutrition, :add_to_food_log, :chat, :save_order_reason, :check_food_medication]
+  skip_before_action :verify_authenticity_token, only: [:nutrition, :add_to_food_log, :chat, :save_order_reason, :check_food_medication, :bowel_impact]
 
   FOOD_FINDER_URL = ENV.fetch("FOOD_FINDER_URL", "http://127.0.0.1:5001")
 
@@ -399,6 +399,44 @@ class DashboardController < ApplicationController
     render json: { error: "Food finder API not reachable" }, status: :service_unavailable
   rescue StandardError => e
     render json: { error: e.message }, status: :internal_server_error
+  end
+
+  def bowel_impact
+    patient = Patient.find_by(id: params[:patient_id])
+    return render json: { message: nil } unless patient
+
+    food_item = params[:food_item] || {}
+    return render json: { message: nil } if food_item["name"].blank?
+
+    uri = URI("#{FOOD_FINDER_URL}/bowel_impact")
+    http = Net::HTTP.new(uri.host, uri.port)
+    http.use_ssl = uri.scheme == "https"
+    http.open_timeout = 3
+    http.read_timeout = 12
+
+    req = Net::HTTP::Post.new(uri)
+    req["Content-Type"] = "application/json"
+    req.body = {
+      patient_infos: patient.patient_infos || {},
+      food_item: food_item
+    }.to_json
+
+    response = http.request(req)
+    body = begin
+      JSON.parse(response.body)
+    rescue JSON::ParserError
+      { "message" => nil }
+    end
+
+    if response.is_a?(Net::HTTPSuccess)
+      render json: body
+    else
+      render json: body, status: response.code.to_i
+    end
+  rescue Errno::ECONNREFUSED, SocketError
+    render json: { message: nil }
+  rescue StandardError => e
+    render json: { message: nil, error: e.message }
   end
 
   def check_food_medication

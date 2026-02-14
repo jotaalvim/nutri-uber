@@ -336,6 +336,9 @@
                 });
                 const data = await res.json();
                 if (res.ok) {
+                  if (typeof window.fetchAndShowBowelImpact === "function") {
+                    await window.fetchAndShowBowelImpact(patientId, { name: name, description: desc });
+                  }
                   window.open(url, "_blank", "noopener");
                   const today = new Date().toISOString().slice(0, 10);
                   sessionStorage.setItem("nutriOrderReasonPrompt", JSON.stringify({ patientId: patientId, date: today }));

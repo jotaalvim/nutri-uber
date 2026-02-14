@@ -185,6 +185,23 @@
         }
         window.addSecondOrderConfirmPrompt = addSecondOrderConfirmPrompt;
 
+        async function fetchAndShowBowelImpact(patientId, foodItem) {
+          if (!patientId || !foodItem || !foodItem.name) return;
+          try {
+            const res = await fetch("/bowel_impact", {
+              method: "POST",
+              headers: { "Content-Type": "application/json", "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]')?.content || "", "Accept": "application/json" },
+              body: JSON.stringify({ patient_id: patientId, food_item: { name: foodItem.name, description: foodItem.description || "" } })
+            });
+            const data = await res.json();
+            if (data.message) {
+              openChat();
+              addMessage("assistant", "💩 Impacto no trânsito intestinal\n\n" + data.message);
+            }
+          } catch (_) {}
+        }
+        window.fetchAndShowBowelImpact = fetchAndShowBowelImpact;
+
         function addMedicationWarning(message, pendingOrder) {
           const bubble = document.createElement("div");
           bubble.className = "flex justify-start";
@@ -269,6 +286,7 @@
             });
             const data = await res.json();
             if (res.ok) {
+              await fetchAndShowBowelImpact(pid, { name: itemObj.name, description: itemObj.description || "" });
               window.open(urlToOpen, "_blank", "noopener");
               addMessage("assistant", "Order added. The page will refresh to show your update.");
               window.location.reload();
@@ -305,6 +323,7 @@
               });
               const data = await res.json();
               if (res.ok) {
+                await fetchAndShowBowelImpact(medAck.patientId, { name: medAck.logItem.name, description: medAck.logItem.description || "" });
                 window.open(medAck.url, "_blank", "noopener");
                 if (!medAck.orderReason) {
                   const today = new Date().toISOString().slice(0, 10);
