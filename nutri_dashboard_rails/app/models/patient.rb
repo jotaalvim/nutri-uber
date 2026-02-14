@@ -77,14 +77,18 @@ class Patient < ApplicationRecord
     last_order_out.present? && last_order_out.to_s == Time.zone.today.strftime("%Y-%m-%d")
   end
 
+  # Returns full order-out history (all dates, no limit) for nutritionist to review behavior.
   def order_out_entries
     consumed_by_date = (patient_infos || {}).dig("order_out_consumed_by_date") || {}
     return [] if consumed_by_date.blank?
 
+    reason_by_date = (patient_infos || {}).dig("order_out_reason_by_date") || {}
     diary_by_date = food_diary.index_by { |e| e["date"].to_s }
     consumed_by_date.keys.sort.reverse.map do |date|
       entry = diary_by_date[date] || { "date" => date, "meals" => [], "observations" => "Ordered out" }
-      entry.merge("_consumed" => consumed_by_date[date])
+      reasons = reason_by_date[date]
+      reasons = Array(reasons) if reasons.present?
+      entry.merge("_consumed" => consumed_by_date[date], "_order_reasons" => reasons || [])
     end
   end
 

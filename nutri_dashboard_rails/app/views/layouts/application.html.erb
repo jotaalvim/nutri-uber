@@ -7,6 +7,7 @@
     <meta name="mobile-web-app-capable" content="yes">
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
+    <%= action_cable_meta_tag %>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -82,6 +83,7 @@
 
         function openChat() { panel.classList.remove("hidden"); input.focus(); }
         function closeChat() { panel.classList.add("hidden"); }
+        window.openChat = openChat;
 
         toggle.addEventListener("click", openChat);
         closeBtn.addEventListener("click", closeChat);
@@ -103,6 +105,93 @@
           messagesEl.scrollTop = messagesEl.scrollHeight;
         }
 
+        function addOrderReasonPrompt() {
+          const prompt = "Why did you choose to order in today? Sharing your reason helps your nutritionist understand your situation and support you better.";
+          addMessage("assistant", prompt);
+          chatHistory.push({ role: "assistant", content: prompt });
+          input.placeholder = "e.g. Tired, no time to cook, celebrating…";
+        }
+        window.addOrderReasonPrompt = addOrderReasonPrompt;
+
+        function addSecondOrderConfirmPrompt() {
+          const prompt = "You've already ordered in today. Do you really need to order again? Tell me why.";
+          addMessage("assistant", prompt);
+          chatHistory.push({ role: "assistant", content: prompt });
+          input.placeholder = "e.g. Still hungry, unexpected guests…";
+        }
+        window.addSecondOrderConfirmPrompt = addSecondOrderConfirmPrompt;
+
+        function addChatOrderCard(item, url, patientId, userReason) {
+          const macros = item.macronutrient_distribution_in_grams || {};
+          const macroStr = [macros.protein, macros.carbohydrate, macros.fat].some(Boolean)
+            ? "P " + (macros.protein || "—") + "g · C " + (macros.carbohydrate || "—") + "g · F " + (macros.fat || "—") + "g"
+            : "Nutrition varies";
+          const itemB64 = btoa(unescape(encodeURIComponent(JSON.stringify(item))));
+          const reasonB64 = userReason ? btoa(unescape(encodeURIComponent(userReason))) : "";
+          const bubble = document.createElement("div");
+          bubble.className = "flex justify-start";
+          bubble.innerHTML = '<div class="max-w-[85%] rounded-2xl overflow-hidden bg-white border border-stone-200 shadow-md p-4">' +
+            '<p class="font-semibold text-stone-800 mb-1">' + escapeHtml(item.name || "") + '</p>' +
+            '<p class="text-xs text-stone-500 mb-2">' + escapeHtml(item.restaurant || "") + '</p>' +
+            '<p class="text-xs text-amber-700 mb-3">' + escapeHtml(macroStr) + '</p>' +
+            '<p class="text-lg font-bold text-stone-800 mb-3">' + escapeHtml(item.price || "—") + '</p>' +
+            '<button type="button" class="chat-order-btn w-full px-4 py-2.5 rounded-xl font-medium text-sm bg-emerald-600 text-white hover:bg-emerald-700" data-url="' + escapeHtml(url) + '" data-patient-id="' + escapeHtml(String(patientId)) + '" data-item-b64="' + itemB64 + '" data-reason-b64="' + reasonB64 + '">Order →</button></div>';
+          messagesEl.appendChild(bubble);
+          messagesEl.scrollTop = messagesEl.scrollHeight;
+        }
+
+        messagesEl.addEventListener("click", async function(e) {
+          const btn = e.target.closest(".chat-order-btn");
+          if (!btn) return;
+          e.preventDefault();
+          e.stopPropagation();
+          const itemB64 = btn.dataset.itemB64;
+          const urlToOpen = btn.dataset.url;
+          const pid = btn.dataset.patientId;
+          const reasonB64 = btn.dataset.reasonB64 || "";
+          if (!itemB64 || !urlToOpen || !pid) return;
+          let itemObj;
+          try {
+            itemObj = JSON.parse(decodeURIComponent(escape(atob(itemB64))));
+          } catch (_) { return; }
+          const logItem = { name: itemObj.name, restaurant: itemObj.restaurant };
+          if (itemObj.nutriments && Object.keys(itemObj.nutriments || {}).length) logItem.nutriments = itemObj.nutriments;
+          btn.disabled = true;
+          btn.textContent = "…";
+          try {
+            const res = await fetch("/add_to_food_log", {
+              method: "POST",
+              headers: { "Content-Type": "application/json", "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]')?.content || "", "Accept": "application/json" },
+              body: JSON.stringify({ patient_id: pid, items: [logItem], meal_type: "Refeição", from_order: true })
+            });
+            const data = await res.json();
+            if (res.ok) {
+              const today = new Date().toISOString().slice(0, 10);
+              if (reasonB64) {
+                try {
+                  const reason = decodeURIComponent(escape(atob(reasonB64)));
+                  await fetch("/save_order_reason", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]')?.content || "", "Accept": "application/json" },
+                    body: JSON.stringify({ patient_id: pid, date: today, reason: reason })
+                  });
+                } catch (_) {}
+              }
+              window.open(urlToOpen, "_blank", "noopener");
+              addMessage("assistant", "Order added. The page will refresh to show your update.");
+              window.location.reload();
+            } else {
+              addMessage("assistant", data.error || "Could not add to log");
+              btn.disabled = false;
+              btn.textContent = "Order →";
+            }
+          } catch (err) {
+            addMessage("assistant", err.message || "Failed");
+            btn.disabled = false;
+            btn.textContent = "Order →";
+          }
+        });
+
         form.addEventListener("submit", async (e) => {
           e.preventDefault();
           const text = input.value.trim();
@@ -111,6 +200,81 @@
           input.value = "";
           sendBtn.disabled = true;
           addMessage("user", text);
+
+          const pending = window.nutriOrderReasonPending;
+          if (pending && pending.patientId && pending.date) {
+            try {
+              const res = await fetch("/save_order_reason", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]')?.content || "",
+                  "Accept": "application/json"
+                },
+                body: JSON.stringify({ patient_id: pending.patientId, date: pending.date, reason: text })
+              });
+              const data = await res.json();
+              window.nutriOrderReasonPending = null;
+              input.placeholder = "Ask about nutrition…";
+              if (res.ok) {
+                addMessage("assistant", "Thanks for sharing. Your nutritionist will see this to better support you.");
+                if (data.order_out_entries && typeof window.updateOrderOutSection === "function") {
+                  window.updateOrderOutSection(data.order_out_entries);
+                }
+              } else {
+                addMessage("assistant", "Couldn't save: " + (data.error || "Please try again."));
+              }
+            } catch (err) {
+              addMessage("assistant", "Connection error. Your reason wasn't saved.");
+            } finally {
+              sendBtn.disabled = false;
+              input.focus();
+            }
+            return;
+          }
+
+          const secondOrder = window.nutriPendingSecondOrder;
+          if (secondOrder && secondOrder.patientId && secondOrder.item) {
+            chatHistory.push({ role: "user", content: text });
+            const thinking = document.createElement("div");
+            thinking.className = "flex justify-start";
+            thinking.innerHTML = '<div class="max-w-[85%] rounded-2xl px-4 py-2.5 bg-stone-100 text-stone-500 italic">Thinking…</div>';
+            messagesEl.appendChild(thinking);
+            messagesEl.scrollTop = messagesEl.scrollHeight;
+            try {
+              const res = await fetch("/chat", {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]')?.content || "", "Accept": "application/json" },
+                body: JSON.stringify({
+                  messages: chatHistory,
+                  confirm_second_order: true,
+                  pending_item: secondOrder.item
+                })
+              });
+              const resText = await res.text();
+              const data = resText ? JSON.parse(resText) : {};
+              thinking.remove();
+              if (res.ok && data.message) {
+                addMessage("assistant", data.message);
+                chatHistory.push({ role: "assistant", content: data.message });
+                if (data.order_approved) {
+                  addChatOrderCard(secondOrder.item, secondOrder.url, secondOrder.patientId, text);
+                }
+                window.nutriPendingSecondOrder = null;
+                input.placeholder = "Ask about nutrition…";
+              } else {
+                addMessage("assistant", "Sorry, I couldn't get a response. " + (data.error || "Please try again."));
+              }
+            } catch (err) {
+              thinking.remove();
+              addMessage("assistant", "Connection error. " + (err.message || "Please try again."));
+            } finally {
+              sendBtn.disabled = false;
+              input.focus();
+            }
+            return;
+          }
+
           chatHistory.push({ role: "user", content: text });
 
           const thinking = document.createElement("div");
@@ -133,8 +297,8 @@
             });
             let data;
             try {
-              const text = await res.text();
-              data = text ? JSON.parse(text) : {};
+              const resText = await res.text();
+              data = resText ? JSON.parse(resText) : {};
             } catch (parseErr) {
               thinking.remove();
               addMessage("assistant", "Server returned an invalid response (HTML instead of JSON). The /chat endpoint may be missing. Rebuild: docker-compose build --no-cache && docker-compose up -d");
@@ -155,6 +319,21 @@
             input.focus();
           }
         });
+
+        (function checkOrderReasonPrompt() {
+          try {
+            const stored = sessionStorage.getItem("nutriOrderReasonPrompt");
+            if (stored) {
+              sessionStorage.removeItem("nutriOrderReasonPrompt");
+              const { patientId, date } = JSON.parse(stored);
+              if (patientId && date) {
+                window.nutriOrderReasonPending = { patientId, date };
+                openChat();
+                addOrderReasonPrompt();
+              }
+            }
+          } catch (_) {}
+        })();
       })();
     </script>
   </body>

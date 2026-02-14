@@ -152,7 +152,7 @@
     </div>
 
     <%# Ready-to-order meals + basket in one card %>
-    <section class="rounded-2xl bg-white border border-stone-200/80 shadow-sm p-6 sm:p-8" id="food-finder-section">
+    <section class="rounded-2xl bg-white border border-stone-200/80 shadow-sm p-6 sm:p-8" id="food-finder-section" data-ordered-out-today="<%= @selected_patient.ordered_out_today? %>" data-patient-id="<%= @selected_patient.id %>">
       <h2 class="font-display text-lg font-semibold text-stone-800 mb-4 flex items-center gap-2">
         <span aria-hidden="true">🥡</span>
         Find healthy food
@@ -210,40 +210,54 @@
     </section>
 
     <% order_out_list = @selected_patient.order_out_entries %>
-    <section class="rounded-2xl bg-white border border-stone-200/80 shadow-sm p-6 sm:p-8">
+    <section id="order-out-history" class="rounded-2xl bg-white border border-stone-200/80 shadow-sm p-6 sm:p-8" data-patient-id="<%= @selected_patient.id %>">
       <h2 class="font-display text-lg font-semibold text-stone-800 mb-4 flex items-center gap-2">
         <span aria-hidden="true">🥡</span>
-        Eating out
+        Order-out history
       </h2>
-      <% if order_out_list.any? %>
-        <div class="space-y-4">
-          <% order_out_list.each do |entry| %>
-            <% consumed = entry["_consumed"] || {} %>
-            <% date_display = begin; Date.parse(entry["date"].to_s).strftime("%B %d, %Y"); rescue; entry["date"]; end %>
-            <div class="rounded-xl border border-amber-200/60 bg-amber-50/30 p-4">
-              <p class="text-sm font-semibold text-stone-700 mb-2"><%= date_display %></p>
-              <ul class="space-y-1.5 mb-3">
-                <% (entry["meals"] || []).each do |meal| %>
-                  <li class="text-sm text-stone-600 flex items-center gap-2">
-                    <span class="text-amber-500">•</span>
-                    <%= meal["text"] %>
-                  </li>
-                <% end %>
-              </ul>
-              <% if consumed.present? && consumed["energy_kcal"].to_f.positive? %>
-                <p class="text-xs text-stone-500">
-                  <%= consumed["energy_kcal"] %> kcal
-                  <% if consumed["protein"].to_f.positive? || consumed["carbohydrate"].to_f.positive? || consumed["fat"].to_f.positive? %>
-                    · P <%= consumed["protein"] %>g · C <%= consumed["carbohydrate"] %>g · F <%= consumed["fat"] %>g
+      <p class="text-sm text-stone-500 mb-4">Full record of ordering-in behavior for the nutritionist to review.</p>
+      <div id="order-out-history-content">
+        <% if order_out_list.any? %>
+          <p class="text-xs text-stone-500 mb-3"><%= order_out_list.size %> order-out event<%= order_out_list.size == 1 ? "" : "s" %> in total</p>
+          <div class="space-y-4">
+            <% order_out_list.each do |entry| %>
+              <% consumed = entry["_consumed"] || {} %>
+              <% date_display = begin; Date.parse(entry["date"].to_s).strftime("%B %d, %Y"); rescue; entry["date"]; end %>
+              <div class="rounded-xl border border-amber-200/60 bg-amber-50/30 p-4">
+                <p class="text-sm font-semibold text-stone-700 mb-2"><%= date_display %></p>
+                <ul class="space-y-1.5 mb-3">
+                  <% (entry["meals"] || []).each do |meal| %>
+                    <li class="text-sm text-stone-600 flex items-center gap-2">
+                      <span class="text-amber-500">•</span>
+                      <%= meal["text"] %>
+                    </li>
                   <% end %>
-                </p>
-              <% end %>
-            </div>
-          <% end %>
-        </div>
-      <% else %>
-        <p class="text-stone-500 text-sm py-4">No eating out recorded yet.</p>
-      <% end %>
+                </ul>
+                <% if (reasons = entry["_order_reasons"]).present? && reasons.any? %>
+                  <div class="mb-3 rounded-lg bg-white/80 border border-amber-200/50 px-3 py-2">
+                    <p class="text-xs font-medium text-amber-800 mb-0.5">Why they ordered in</p>
+                    <ul class="space-y-1 text-sm text-stone-600">
+                      <% reasons.each do |r| %>
+                        <li><%= r %></li>
+                      <% end %>
+                    </ul>
+                  </div>
+                <% end %>
+                <% if consumed.present? && consumed["energy_kcal"].to_f.positive? %>
+                  <p class="text-xs text-stone-500">
+                    <%= consumed["energy_kcal"] %> kcal
+                    <% if consumed["protein"].to_f.positive? || consumed["carbohydrate"].to_f.positive? || consumed["fat"].to_f.positive? %>
+                      · P <%= consumed["protein"] %>g · C <%= consumed["carbohydrate"] %>g · F <%= consumed["fat"] %>g
+                    <% end %>
+                  </p>
+                <% end %>
+              </div>
+            <% end %>
+          </div>
+        <% else %>
+          <p class="text-stone-500 text-sm py-4">No eating out recorded yet.</p>
+        <% end %>
+      </div>
     </section>
 
     <%= content_for :head do %>
@@ -268,13 +282,28 @@
               if (!card || !url || url === "#") return;
               const name = card.dataset.itemName || "";
               const restaurant = card.dataset.itemRestaurant || "";
+              const price = card.dataset.itemPrice || "";
+              const desc = card.dataset.itemDescription || "";
+              const macros = card.dataset.itemMacros || "{}";
               let nutriments = null;
               try {
                 const nutStr = card.dataset.itemNutrition || card.getAttribute("data-item-nutrition") || "";
                 if (nutStr) nutriments = JSON.parse(nutStr);
               } catch (_) {}
-              const item = { name: name, restaurant: restaurant };
+              const item = { name: name, restaurant: restaurant, price: price };
               if (nutriments && Object.keys(nutriments).length) item.nutriments = nutriments;
+              try { item.macronutrient_distribution_in_grams = JSON.parse(macros); } catch (_) {}
+
+              const section = document.getElementById("food-finder-section");
+              const orderedOutToday = section && section.dataset.orderedOutToday === "true";
+
+              if (orderedOutToday) {
+                window.nutriPendingSecondOrder = { item: item, url: url, patientId: patientId };
+                if (typeof window.openChat === "function") window.openChat();
+                if (typeof window.addSecondOrderConfirmPrompt === "function") window.addSecondOrderConfirmPrompt();
+                return;
+              }
+
               orderBtn.disabled = true;
               orderBtn.textContent = "…";
               try {
@@ -286,6 +315,8 @@
                 const data = await res.json();
                 if (res.ok) {
                   window.open(url, "_blank", "noopener");
+                  const today = new Date().toISOString().slice(0, 10);
+                  sessionStorage.setItem("nutriOrderReasonPrompt", JSON.stringify({ patientId: patientId, date: today }));
                   window.location.reload();
                 } else {
                   alert(data.error || "Could not add to log");
@@ -344,6 +375,22 @@
               [a[i], a[j]] = [a[j], a[i]];
             }
             return a;
+          }
+
+          function healthScore(item) {
+            const macros = item.macronutrient_distribution_in_grams || {};
+            const nut = item.nutriments || {};
+            const p = (nut.protein ?? macros.protein) || 0;
+            const f = (nut.fiber ?? 0) || 0;
+            const sug = (nut.sugar ?? 0) || 0;
+            const roleBonus = { protein: 50, vegetable: 45, vegetable_or_fruit: 40, carbohydrate: 10, drink: 5 }[item.basket_role] || 0;
+            const isGrocery = !!(item.basket_role || item.store_url);
+            const readyMealBonus = isGrocery ? 0 : 1000;
+            return (Number(p) * 2 + Number(f) * 3 - Number(sug) * 2) + roleBonus + readyMealBonus;
+          }
+
+          function sortByHealthiest(arr) {
+            return [...arr].sort((a, b) => healthScore(b) - healthScore(a));
           }
 
           function buildNutritionPanelHtml(nut, data) {
@@ -411,7 +458,7 @@
 
           function renderResults(dataOrItems) {
             const raw = Array.isArray(dataOrItems) ? dataOrItems : (dataOrItems?.items || []);
-            const items = shuffle(raw).slice(0, 20);
+            const items = sortByHealthiest(raw).slice(0, 20);
             currentItems = items;
             window.nutriDashboardFoodItems = items.map(i => ({
               name: i.name,
@@ -458,7 +505,7 @@
               const needsFetch = Object.keys(nut).length === 0 ? "1" : "";
               const shortDesc = (item.description || "").trim().slice(0, 120);
               return `
-              <div class="shrink-0 w-72 snap-center rounded-2xl overflow-hidden bg-white border border-stone-200/80 shadow-md hover:shadow-lg transition-shadow flex flex-col relative h-full min-h-[380px]" data-item-name="${escapeHtml(item.name)}" data-item-restaurant="${escapeHtml(item.restaurant || '')}" data-item-description="${escapeHtml(itemDesc)}" data-item-image-url="${escapeHtml(itemImg)}" data-item-nutrition="${escapeHtml(itemNutJson)}" data-item-nutrition-source="${escapeHtml(itemNutSource)}">
+              <div class="shrink-0 w-72 snap-center rounded-2xl overflow-hidden bg-white border border-stone-200/80 shadow-md hover:shadow-lg transition-shadow flex flex-col relative h-full min-h-[380px]" data-item-name="${escapeHtml(item.name)}" data-item-restaurant="${escapeHtml(item.restaurant || '')}" data-item-description="${escapeHtml(itemDesc)}" data-item-image-url="${escapeHtml(itemImg)}" data-item-nutrition="${escapeHtml(itemNutJson)}" data-item-nutrition-source="${escapeHtml(itemNutSource)}" data-item-price="${escapeHtml(item.price || '')}" data-item-macros="${escapeHtml(JSON.stringify(item.macronutrient_distribution_in_grams || {}))}">
                 <div class="block cursor-default flex flex-col flex-1 min-h-0">
                   <div class="aspect-[7/4] shrink-0 bg-stone-100 overflow-hidden relative">
                     <img src="${escapeHtml(primaryImg)}" alt="${escapeHtml(item.name)}" class="w-full h-full object-cover" loading="lazy" data-fallback="${escapeHtml(defaultPlaceholder)}" onerror="this.onerror=null;this.src=this.dataset.fallback"/>
@@ -651,8 +698,100 @@
           div.textContent = s || "";
           return div.innerHTML;
         }
+
+        function renderOrderOutContent(entries) {
+          if (!entries || entries.length === 0) {
+            return '<p class="text-stone-500 text-sm py-4">No eating out recorded yet.</p>';
+          }
+          const count = entries.length;
+          let html = '<p class="text-xs text-stone-500 mb-3">' + count + ' order-out event' + (count === 1 ? '' : 's') + ' in total</p>';
+          html += '<div class="space-y-4">';
+          entries.forEach(function(entry) {
+            const consumed = entry._consumed || entry["_consumed"] || {};
+            let dateDisplay = entry.date;
+            try {
+              const d = new Date(entry.date + 'T12:00:00');
+              dateDisplay = d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+            } catch (_) {}
+            html += '<div class="rounded-xl border border-amber-200/60 bg-amber-50/30 p-4">';
+            html += '<p class="text-sm font-semibold text-stone-700 mb-2">' + escapeHtml(dateDisplay) + '</p>';
+            html += '<ul class="space-y-1.5 mb-3">';
+            (entry.meals || []).forEach(function(meal) {
+              html += '<li class="text-sm text-stone-600 flex items-center gap-2"><span class="text-amber-500">•</span>' + escapeHtml(meal.text || '') + '</li>';
+            });
+            html += '</ul>';
+            var reasons = entry._order_reasons || entry["_order_reasons"] || [];
+            if (Array.isArray(reasons) && reasons.length > 0) {
+              html += '<div class="mb-3 rounded-lg bg-white/80 border border-amber-200/50 px-3 py-2">';
+              html += '<p class="text-xs font-medium text-amber-800 mb-0.5">Why they ordered in</p>';
+              html += '<ul class="space-y-1 text-sm text-stone-600">';
+              reasons.forEach(function(r) { html += '<li>' + escapeHtml(r) + '</li>'; });
+              html += '</ul></div>';
+            }
+            if (consumed.energy_kcal > 0) {
+              let nut = consumed.energy_kcal + ' kcal';
+              if (consumed.protein > 0 || consumed.carbohydrate > 0 || consumed.fat > 0) {
+                nut += ' · P ' + (consumed.protein || '—') + 'g · C ' + (consumed.carbohydrate || '—') + 'g · F ' + (consumed.fat || '—') + 'g';
+              }
+              html += '<p class="text-xs text-stone-500">' + escapeHtml(nut) + '</p>';
+            }
+            html += '</div>';
+          });
+          html += '</div>';
+          return html;
+        }
+
+        function updateOrderOutSection(entries) {
+          const content = document.getElementById("order-out-history-content");
+          if (content && typeof renderOrderOutContent === "function") {
+            content.innerHTML = renderOrderOutContent(entries);
+          }
+        }
+        window.updateOrderOutSection = updateOrderOutSection;
+
+        function initOrderOutWebSocket() {
+          const section = document.getElementById("order-out-history");
+          if (!section) return;
+          const patientId = section.dataset.patientId;
+          if (!patientId) return;
+
+          const meta = document.querySelector('meta[name="action-cable-url"]');
+          const path = meta ? meta.getAttribute("content") : "/cable";
+          const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+          const wsUrl = path.startsWith("ws") ? path : protocol + "//" + window.location.host + (path.startsWith("/") ? path : "/" + path);
+
+          let socket;
+          function connect() {
+            socket = new WebSocket(wsUrl);
+            socket.onopen = function() {
+              socket.send(JSON.stringify({
+                command: "subscribe",
+                identifier: JSON.stringify({ channel: "PatientOrderOutChannel", patient_id: String(patientId) })
+              }));
+            };
+            socket.onmessage = function(event) {
+              try {
+                const msg = JSON.parse(event.data);
+                if (msg.type === "ping" || msg.type === "welcome") return;
+                if (msg.message && msg.message.order_out_entries) {
+                  updateOrderOutSection(msg.message.order_out_entries);
+                }
+              } catch (_) {}
+            };
+            socket.onclose = function() {
+              setTimeout(connect, 3000);
+            };
+            socket.onerror = function() {
+              socket.close();
+            };
+          }
+          connect();
+          window.addEventListener("beforeunload", function() { if (socket) socket.close(); });
+        }
+
         function onLoad() {
           initFindFood();
+          initOrderOutWebSocket();
         }
         document.addEventListener("turbo:load", onLoad);
         document.addEventListener("DOMContentLoaded", onLoad);

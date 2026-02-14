@@ -4,7 +4,7 @@ require "net/http"
 require "json"
 
 class DashboardController < ApplicationController
-  skip_before_action :verify_authenticity_token, only: [:nutrition, :add_to_food_log, :chat]
+  skip_before_action :verify_authenticity_token, only: [:nutrition, :add_to_food_log, :chat, :save_order_reason]
 
   FOOD_FINDER_URL = ENV.fetch("FOOD_FINDER_URL", "http://127.0.0.1:5001")
 
@@ -238,6 +238,7 @@ class DashboardController < ApplicationController
     infos["last_order_out"] = today if from_order
 
     if from_order
+      # Append to full history: never overwrite other dates, only add/update today
       consumed_by_date = infos["order_out_consumed_by_date"] || {}
       consumed_today = consumed_by_date[today] || { "energy_kcal" => 0, "protein" => 0, "carbohydrate" => 0, "fat" => 0, "fiber" => 0 }
       items.each do |item|
@@ -268,8 +269,36 @@ class DashboardController < ApplicationController
     end
 
     patient.update!(patient_infos: infos)
+    broadcast_order_out_update(patient)
 
     render json: { status: "ok", message: "Added to food log", diary: diary, last_order_out: infos["last_order_out"] }
+  rescue StandardError => e
+    render json: { error: e.message }, status: :internal_server_error
+  end
+
+  def save_order_reason
+    patient = Patient.find_by(id: params[:patient_id])
+    return render json: { error: "Patient not found" }, status: :not_found unless patient
+
+    reason = params[:reason].to_s.strip
+    return render json: { error: "Reason cannot be empty" }, status: :bad_request if reason.blank?
+
+    date = params[:date].presence || Time.zone.today.strftime("%Y-%m-%d")
+
+    infos = patient.patient_infos || {}
+    infos["order_out_reason_by_date"] ||= {}
+    existing = infos["order_out_reason_by_date"][date]
+    reasons = Array(existing).dup
+    reasons << reason
+    infos["order_out_reason_by_date"][date] = reasons
+    patient.update!(patient_infos: infos)
+    broadcast_order_out_update(patient)
+
+    render json: {
+      status: "ok",
+      message: "Reason saved for your nutritionist",
+      order_out_entries: patient.order_out_entries
+    }
   rescue StandardError => e
     render json: { error: e.message }, status: :internal_server_error
   end
@@ -361,9 +390,13 @@ class DashboardController < ApplicationController
     http.open_timeout = 3
     http.read_timeout = 60
 
+    body = { messages: messages, food_items: food_items }
+    body[:confirm_second_order] = true if params[:confirm_second_order]
+    body[:pending_item] = params[:pending_item] if params[:pending_item].present?
+
     req = Net::HTTP::Post.new(uri)
     req["Content-Type"] = "application/json"
-    req.body = { messages: messages, food_items: food_items }.to_json
+    req.body = body.to_json
 
     response = http.request(req)
     body = begin
@@ -384,6 +417,13 @@ class DashboardController < ApplicationController
   end
 
   private
+
+  def broadcast_order_out_update(patient)
+    PatientOrderOutChannel.broadcast_to(
+      patient.id.to_s,
+      { order_out_entries: patient.order_out_entries }
+    )
+  end
 
   def patient_to_api_format(patient)
     {

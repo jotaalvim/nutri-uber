@@ -504,8 +504,8 @@ def nutrition():
 def chat():
     """
     Chat with the nutrition assistant LLM.
-    POST /chat with JSON: { "messages": [...], "food_items": [{ "name", "restaurant", "price", "macronutrient_distribution_in_grams", "basket_role" }] }
-    When food_items are provided, the assistant recommends from that list. Returns: { "message": "..." }
+    POST /chat with JSON: { "messages": [...], "food_items": [...], "confirm_second_order": bool, "pending_item": {...} }
+    When confirm_second_order is true, the assistant decides if the user should order again today. Returns: { "message": "...", "order_approved": bool }
     """
     try:
         data = request.get_json() or {}
@@ -522,6 +522,43 @@ def chat():
             client = OpenAI(api_key=api_key)
         except ImportError:
             return jsonify({"error": "openai package not installed"}), 503
+
+        confirm_second_order = data.get("confirm_second_order") is True
+        pending_item = data.get("pending_item") or {}
+
+        if confirm_second_order and pending_item:
+            item_name = pending_item.get("name", "this item")
+            item_restaurant = pending_item.get("restaurant", "")
+            system_prompt = f"""You are a supportive nutrition assistant. The user has ALREADY ordered in today and is trying to order again: "{item_name}" from {item_restaurant}.
+
+Your job: Have a brief, empathetic conversation to understand if they really need to order again. Consider: genuine hunger, social plans, lack of groceries, etc. vs. impulse or habit.
+
+After the user explains, decide:
+- If they have a good reason (e.g. didn't have time to cook, unexpected guests, genuinely hungry): approve the order. Reply with your supportive message, then on a NEW LINE write exactly: ORDER_APPROVED
+- If it seems unnecessary (e.g. boredom, impulse): gently suggest they skip. Reply with your message, then on a NEW LINE write exactly: ORDER_DENIED
+
+Keep your message concise (1-3 sentences). Always end with ORDER_APPROVED or ORDER_DENIED on its own line."""
+            formatted = [{"role": "system", "content": system_prompt}]
+            for m in messages[-10:]:
+                role = (m.get("role") or "user").lower()
+                if role not in ("user", "assistant", "system"):
+                    role = "user"
+                content = (m.get("content") or "").strip()
+                if content:
+                    formatted.append({"role": role, "content": content})
+
+            if not any(m.get("role") == "user" for m in formatted[1:]):
+                return jsonify({"error": "At least one user message required"}), 400
+
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=formatted,
+                max_tokens=256,
+            )
+            reply = (response.choices[0].message.content or "").strip()
+            order_approved = "ORDER_APPROVED" in reply.upper() and "ORDER_DENIED" not in reply.upper()
+            message = reply.replace("ORDER_APPROVED", "").replace("ORDER_DENIED", "").strip()
+            return jsonify({"message": message, "order_approved": order_approved})
 
         food_items = data.get("food_items") or []
         if isinstance(food_items, list) and food_items:

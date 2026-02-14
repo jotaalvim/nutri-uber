@@ -1,4 +1,6 @@
 Rails.application.routes.draw do
+  mount ActionCable.server => "/cable"
+
   # Define your application routes per the DSL in https://guides.rubyonrails.org/routing.html
 
   # Reveal health status on /up that returns 200 if the app boots with no exceptions, otherwise 500.
@@ -18,6 +20,7 @@ Rails.application.routes.draw do
   get "cached_grocery_basket", to: "dashboard#cached_grocery_basket", as: :cached_grocery_basket
   get "grocery_basket", to: "dashboard#grocery_basket", as: :grocery_basket
   post "add_to_food_log", to: "dashboard#add_to_food_log", as: :add_to_food_log
+  post "save_order_reason", to: "dashboard#save_order_reason", as: :save_order_reason
   post "add_basket_to_cart", to: "dashboard#add_basket_to_cart", as: :add_basket_to_cart
   match "nutrition", to: "dashboard#nutrition", as: :nutrition, via: [:get, :post]
   post "chat", to: "dashboard#chat", as: :chat
