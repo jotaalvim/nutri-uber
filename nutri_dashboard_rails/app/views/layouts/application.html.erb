@@ -121,6 +121,18 @@
         }
         window.addSecondOrderConfirmPrompt = addSecondOrderConfirmPrompt;
 
+        function addMedicationWarning(message) {
+          const bubble = document.createElement("div");
+          bubble.className = "flex justify-start";
+          bubble.innerHTML = '<div class="max-w-[85%] rounded-2xl px-4 py-2.5 bg-amber-100 border border-amber-300 text-amber-900">' +
+            '<p class="font-medium text-sm">⚠️ Medication interaction</p>' +
+            '<p class="text-sm mt-1 whitespace-pre-wrap break-words">' + escapeHtml(message) + '</p>' +
+            '<p class="text-xs mt-2 text-amber-700">You can still order if you wish, but please be aware of these risks.</p></div>';
+          messagesEl.appendChild(bubble);
+          messagesEl.scrollTop = messagesEl.scrollHeight;
+        }
+        window.addMedicationWarning = addMedicationWarning;
+
         function addChatOrderCard(item, url, patientId, userReason) {
           const macros = item.macronutrient_distribution_in_grams || {};
           const macroStr = [macros.protein, macros.carbohydrate, macros.fat].some(Boolean)
@@ -159,24 +171,28 @@
           btn.disabled = true;
           btn.textContent = "…";
           try {
+            const checkRes = await fetch("/check_food_medication", {
+              method: "POST",
+              headers: { "Content-Type": "application/json", "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]')?.content || "", "Accept": "application/json" },
+              body: JSON.stringify({ patient_id: pid, food_item: { name: itemObj.name, description: itemObj.description || "" } })
+            });
+            const checkData = await checkRes.json();
+            if (checkData.has_risk && checkData.warning_message) {
+              addMedicationWarning(checkData.warning_message);
+            }
+          } catch (_) {}
+          let orderReason = "";
+          if (reasonB64) {
+            try { orderReason = decodeURIComponent(escape(atob(reasonB64))); } catch (_) {}
+          }
+          try {
             const res = await fetch("/add_to_food_log", {
               method: "POST",
               headers: { "Content-Type": "application/json", "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]')?.content || "", "Accept": "application/json" },
-              body: JSON.stringify({ patient_id: pid, items: [logItem], meal_type: "Refeição", from_order: true })
+              body: JSON.stringify({ patient_id: pid, items: [logItem], meal_type: "Refeição", from_order: true, order_reason: orderReason })
             });
             const data = await res.json();
             if (res.ok) {
-              const today = new Date().toISOString().slice(0, 10);
-              if (reasonB64) {
-                try {
-                  const reason = decodeURIComponent(escape(atob(reasonB64)));
-                  await fetch("/save_order_reason", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json", "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]')?.content || "", "Accept": "application/json" },
-                    body: JSON.stringify({ patient_id: pid, date: today, reason: reason })
-                  });
-                } catch (_) {}
-              }
               window.open(urlToOpen, "_blank", "noopener");
               addMessage("assistant", "Order added. The page will refresh to show your update.");
               window.location.reload();
@@ -242,13 +258,15 @@
             messagesEl.appendChild(thinking);
             messagesEl.scrollTop = messagesEl.scrollHeight;
             try {
+              const patientId = (typeof window.nutriPatientData !== "undefined" && window.nutriPatientData) ? window.nutriPatientData.patient_id : secondOrder.patientId;
               const res = await fetch("/chat", {
                 method: "POST",
                 headers: { "Content-Type": "application/json", "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]')?.content || "", "Accept": "application/json" },
                 body: JSON.stringify({
                   messages: chatHistory,
                   confirm_second_order: true,
-                  pending_item: secondOrder.item
+                  pending_item: secondOrder.item,
+                  patient_id: patientId
                 })
               });
               const resText = await res.text();
@@ -286,6 +304,7 @@
           try {
             const foodItems = (typeof window.nutriDashboardFoodItems !== "undefined" && Array.isArray(window.nutriDashboardFoodItems))
               ? window.nutriDashboardFoodItems : [];
+            const patientId = (typeof window.nutriPatientData !== "undefined" && window.nutriPatientData) ? window.nutriPatientData.patient_id : null;
             const res = await fetch("/chat", {
               method: "POST",
               headers: {
@@ -293,7 +312,7 @@
                 "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]')?.content || "",
                 "Accept": "application/json"
               },
-              body: JSON.stringify({ messages: chatHistory, food_items: foodItems })
+              body: JSON.stringify({ messages: chatHistory, food_items: foodItems, patient_id: patientId })
             });
             let data;
             try {

@@ -4,7 +4,7 @@ require "net/http"
 require "json"
 
 class DashboardController < ApplicationController
-  skip_before_action :verify_authenticity_token, only: [:nutrition, :add_to_food_log, :chat, :save_order_reason]
+  skip_before_action :verify_authenticity_token, only: [:nutrition, :add_to_food_log, :chat, :save_order_reason, :check_food_medication]
 
   FOOD_FINDER_URL = ENV.fetch("FOOD_FINDER_URL", "http://127.0.0.1:5001")
 
@@ -200,18 +200,25 @@ class DashboardController < ApplicationController
     return render json: { error: "No items to add" }, status: :bad_request if items.empty?
 
     from_order = params[:from_order].to_s == "true" || params[:from_order] == true
+    order_reason = params[:order_reason].to_s.strip.presence
 
     infos = patient.patient_infos || {}
     diary_key = "food_diary_history_and_obs"
-    dietary = infos["dietary_history"] || infos.dig("dietary_history") || {}
+    dietary = infos["dietary_history"] || {}
     diary = dietary[diary_key] || dietary["food_diary_history_and_obs"] || []
+    # Migrate from legacy top-level if dietary is empty
+    if diary.empty? && infos["food_diary_history_and_obs"].present?
+      diary = JSON.parse((infos["food_diary_history_and_obs"] || []).to_json)
+    end
 
     today = Time.zone.today.strftime("%Y-%m-%d")
     meals = items.map do |item|
-      {
+      m = {
         "meal_type" => meal_type,
         "text" => [item["name"], item["restaurant"]].compact.join(" @ ")
       }
+      m["reason"] = order_reason if order_reason.present?
+      m
     end
 
     obs = from_order ? "Ordered out" : "Ordered via Nutri-Uber basket"
@@ -286,6 +293,21 @@ class DashboardController < ApplicationController
     date = params[:date].presence || Time.zone.today.strftime("%Y-%m-%d")
 
     infos = patient.patient_infos || {}
+    diary_key = "food_diary_history_and_obs"
+    dietary = infos["dietary_history"] || {}
+    diary = dietary[diary_key] || dietary["food_diary_history_and_obs"] || []
+    # Migrate from legacy top-level if dietary has no diary
+    if diary.empty? && infos["food_diary_history_and_obs"].present?
+      diary = JSON.parse((infos["food_diary_history_and_obs"] || []).to_json)
+    end
+    entry = diary.find { |e| e["date"].to_s == date }
+    if entry && entry["meals"].present?
+      meal_without_reason = entry["meals"].reverse.find { |m| m["reason"].blank? }
+      meal_without_reason["reason"] = reason if meal_without_reason
+    end
+    infos["dietary_history"] ||= {}
+    infos["dietary_history"][diary_key] = diary
+
     infos["order_out_reason_by_date"] ||= {}
     existing = infos["order_out_reason_by_date"][date]
     reasons = Array(existing).dup
@@ -379,6 +401,44 @@ class DashboardController < ApplicationController
     render json: { error: e.message }, status: :internal_server_error
   end
 
+  def check_food_medication
+    patient = Patient.find_by(id: params[:patient_id])
+    return render json: { has_risk: false, warning_message: nil } unless patient
+
+    food_item = params[:food_item] || {}
+    return render json: { has_risk: false, warning_message: nil } if food_item["name"].blank?
+
+    uri = URI("#{FOOD_FINDER_URL}/check_food_medication")
+    http = Net::HTTP.new(uri.host, uri.port)
+    http.use_ssl = uri.scheme == "https"
+    http.open_timeout = 3
+    http.read_timeout = 15
+
+    req = Net::HTTP::Post.new(uri)
+    req["Content-Type"] = "application/json"
+    req.body = {
+      patient_infos: patient.patient_infos || {},
+      food_item: food_item
+    }.to_json
+
+    response = http.request(req)
+    body = begin
+      JSON.parse(response.body)
+    rescue JSON::ParserError
+      { "has_risk" => false, "warning_message" => nil }
+    end
+
+    if response.is_a?(Net::HTTPSuccess)
+      render json: body
+    else
+      render json: body, status: response.code.to_i
+    end
+  rescue Errno::ECONNREFUSED, SocketError
+    render json: { has_risk: false, warning_message: nil }
+  rescue StandardError => e
+    render json: { has_risk: false, warning_message: nil, error: e.message }
+  end
+
   def chat
     messages = params[:messages] || []
     food_items = params[:food_items] || []
@@ -393,6 +453,10 @@ class DashboardController < ApplicationController
     body = { messages: messages, food_items: food_items }
     body[:confirm_second_order] = true if params[:confirm_second_order]
     body[:pending_item] = params[:pending_item] if params[:pending_item].present?
+    if params[:patient_id].present?
+      patient = Patient.find_by(id: params[:patient_id])
+      body[:patient_infos] = patient&.patient_infos || {} if patient
+    end
 
     req = Net::HTTP::Post.new(uri)
     req["Content-Type"] = "application/json"

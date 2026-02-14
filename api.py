@@ -6,7 +6,9 @@ GET  /find_food?file=path/to/patients.jsonl&patient_index=0&city=braga-norte
 GET  /warm_cache?patient_id=1&city=braga-norte - Pre-fetch in background (returns immediately)
 """
 
+import json
 import os
+import re
 import threading
 from pathlib import Path
 
@@ -500,6 +502,99 @@ def nutrition():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/check_food_medication", methods=["POST"])
+def check_food_medication():
+    """
+    Check if a food item may interact badly with the patient's medications.
+    POST /check_food_medication with JSON: { "patient_infos": {...}, "food_item": { "name": "...", "description": "..." } }
+    Returns: { "has_risk": bool, "warning_message": str | null }
+    """
+    try:
+        data = request.get_json() or {}
+        patient_infos = data.get("patient_infos") or {}
+        food_item = data.get("food_item") or {}
+        food_name = (food_item.get("name") or "").strip()
+        food_desc = (food_item.get("description") or "").strip()
+
+        if not food_name:
+            return jsonify({"has_risk": False, "warning_message": None})
+
+        medical = patient_infos.get("medical_history") or {}
+        medications = (medical.get("medications") or "").strip()
+        diseases = ""
+        if isinstance(medical.get("diseases"), dict):
+            diseases = (medical.get("diseases", {}).get("details") or "").strip()
+        elif isinstance(medical.get("diseases"), str):
+            diseases = medical.get("diseases", "").strip()
+
+        if not medications or medications.lower() in ("não", "nenhum", "none", "n/a", ""):
+            return jsonify({"has_risk": False, "warning_message": None})
+
+        api_key = os.environ.get("OPENAI_API_KEY", "").strip()
+        if not api_key:
+            return jsonify({"has_risk": False, "warning_message": None})
+
+        try:
+            from openai import OpenAI
+            client = OpenAI(api_key=api_key)
+        except ImportError:
+            return jsonify({"has_risk": False, "warning_message": None})
+
+        prompt = f"""You are a clinical nutritionist. Check if this food may interact badly with the patient's medications.
+
+PATIENT MEDICATIONS: {medications}
+PATIENT CONDITIONS (if relevant): {diseases or "Not specified"}
+
+FOOD: {food_name}
+{f"Description: {food_desc}" if food_desc else ""}
+
+Known drug-food interactions to consider:
+- Grapefruit/grapefruit juice: interacts with statins, calcium channel blockers, some immunosuppressants
+- High-potassium foods (bananas, oranges, potatoes, spinach, tomatoes): caution with ACE inhibitors, ARBs (e.g. losartan), potassium-sparing diuretics
+- Tyramine-rich foods (aged cheese, cured meats, fermented foods): caution with MAOIs
+- Vitamin K-rich foods (leafy greens): affects warfarin
+- Alcohol: interacts with many medications (anticonvulsants, metformin, etc.)
+- Lamotrigine (Lamitor): avoid alcohol; grapefruit may affect levels
+- Caffeine: may interact with some stimulants or sedatives
+
+Reply with ONLY a JSON object, no other text:
+- If there is a meaningful risk: {{"has_risk": true, "warning_message": "Clear 1-2 sentence explanation in Portuguese for the patient"}}
+- If no significant risk: {{"has_risk": false, "warning_message": null}}
+
+Be conservative: only flag real, well-documented interactions. Do not warn for trivial or speculative risks."""
+
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=256,
+        )
+        reply = (response.choices[0].message.content or "").strip()
+        try:
+            start = reply.find("{")
+            if start >= 0:
+                depth = 0
+                end = -1
+                for i, c in enumerate(reply[start:], start):
+                    if c == "{":
+                        depth += 1
+                    elif c == "}":
+                        depth -= 1
+                        if depth == 0:
+                            end = i
+                            break
+                if end >= 0:
+                    parsed = json.loads(reply[start : end + 1])
+                    return jsonify({
+                        "has_risk": bool(parsed.get("has_risk")),
+                        "warning_message": parsed.get("warning_message") or None,
+                    })
+        except (json.JSONDecodeError, TypeError):
+            pass
+        return jsonify({"has_risk": False, "warning_message": None})
+    except Exception as e:
+        return jsonify({"has_risk": False, "warning_message": None, "error": str(e)})
+
+
 @app.route("/chat", methods=["POST"])
 def chat():
     """
@@ -561,6 +656,21 @@ Keep your message concise (1-3 sentences). Always end with ORDER_APPROVED or ORD
             return jsonify({"message": message, "order_approved": order_approved})
 
         food_items = data.get("food_items") or []
+        patient_infos = data.get("patient_infos") or {}
+        medical = patient_infos.get("medical_history") or {}
+        medications = (medical.get("medications") or "").strip()
+        diseases = ""
+        if isinstance(medical.get("diseases"), dict):
+            diseases = (medical.get("diseases", {}).get("details") or "").strip()
+        elif isinstance(medical.get("diseases"), str):
+            diseases = medical.get("diseases", "").strip()
+        med_context = ""
+        if medications and medications.lower() not in ("não", "nenhum", "none", "n/a", ""):
+            med_context = f"""
+IMPORTANT - Patient's medications: {medications}
+{f"Patient conditions: {diseases}" if diseases else ""}
+When recommending food, AVOID or WARN about items that may interact badly with these medications. Common interactions: grapefruit with statins/calcium channel blockers; high-potassium foods (bananas, oranges, spinach) with losartan/ACE inhibitors; alcohol with anticonvulsants; tyramine-rich foods with MAOIs. Prefer safer alternatives when possible."""
+
         if isinstance(food_items, list) and food_items:
             def _fmt(it):
                 m = it.get("macronutrient_distribution_in_grams") or {}
@@ -568,13 +678,15 @@ Keep your message concise (1-3 sentences). Always end with ORDER_APPROVED or ORD
                 return f"- {it.get('name', '?')} @ {it.get('restaurant', '?')} | {it.get('price', '')} | P:{m.get('protein', '?')}g C:{m.get('carbohydrate', '?')}g F:{m.get('fat', '?')}g{role}"
             items_text = "\n".join(_fmt(it) for it in food_items[:30])
             system_prompt = f"""You are a friendly nutrition assistant for the Nutri Dashboard app. The user sees food cards they can order. Your job is to RECOMMEND specific items from the list below when they ask what to eat, what to order, or for suggestions.
+{med_context}
 
 AVAILABLE FOOD ITEMS (recommend ONLY from this list):
 {items_text}
 
-When the user asks for recommendations, picks, suggestions, or "what should I order/eat", suggest 1–3 specific items from the list above by name and restaurant. Explain briefly why they fit (e.g. macros, role). If they ask about nutrition in general, answer that too. Keep answers concise. Use metric units (grams, kcal)."""
+When the user asks for recommendations, picks, suggestions, or "what should I order/eat", suggest 1–3 specific items from the list above by name and restaurant. Explain briefly why they fit (e.g. macros, role). Avoid or warn about items that may interact with the patient's medications. If they ask about nutrition in general, answer that too. Keep answers concise. Use metric units (grams, kcal)."""
         else:
-            system_prompt = """You are a friendly nutrition assistant for the Nutri Dashboard app. Help users with meal planning, macros, and healthy eating. No food cards are loaded yet—suggest they click "Find food" first to see orderable items, or answer general nutrition questions. Keep answers concise. Use metric units (grams, kcal)."""
+            system_prompt = f"""You are a friendly nutrition assistant for the Nutri Dashboard app. Help users with meal planning, macros, and healthy eating. No food cards are loaded yet—suggest they click "Find food" first to see orderable items, or answer general nutrition questions.{med_context}
+Keep answers concise. Use metric units (grams, kcal)."""
 
         formatted = [{"role": "system", "content": system_prompt}]
         for m in messages[-20:]:  # last 20 messages for context

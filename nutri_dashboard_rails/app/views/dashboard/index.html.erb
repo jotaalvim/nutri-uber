@@ -224,27 +224,29 @@
               <% consumed = entry["_consumed"] || {} %>
               <% date_display = begin; Date.parse(entry["date"].to_s).strftime("%B %d, %Y"); rescue; entry["date"]; end %>
               <div class="rounded-xl border border-amber-200/60 bg-amber-50/30 p-4">
-                <p class="text-sm font-semibold text-stone-700 mb-2"><%= date_display %></p>
-                <ul class="space-y-1.5 mb-3">
+                <p class="text-sm font-semibold text-stone-700 mb-3"><%= date_display %></p>
+                <div class="space-y-3">
+                  <% reasons_left = (entry["_order_reasons"] || []).dup %>
                   <% (entry["meals"] || []).each do |meal| %>
-                    <li class="text-sm text-stone-600 flex items-center gap-2">
-                      <span class="text-amber-500">•</span>
-                      <%= meal["text"] %>
-                    </li>
-                  <% end %>
-                </ul>
-                <% if (reasons = entry["_order_reasons"]).present? && reasons.any? %>
-                  <div class="mb-3 rounded-lg bg-white/80 border border-amber-200/50 px-3 py-2">
-                    <p class="text-xs font-medium text-amber-800 mb-0.5">Why they ordered in</p>
-                    <ul class="space-y-1 text-sm text-stone-600">
-                      <% reasons.each do |r| %>
-                        <li><%= r %></li>
+                    <% meal_reason = meal["reason"].presence || reasons_left.shift %>
+                    <div class="flex flex-wrap items-start gap-3">
+                      <div class="flex-1 min-w-0">
+                        <p class="text-sm text-stone-600 flex items-center gap-2">
+                          <span class="text-amber-500">•</span>
+                          <%= meal["text"] %>
+                        </p>
+                      </div>
+                      <% if meal_reason.present? %>
+                        <div class="shrink-0 rounded-lg bg-white/80 border border-amber-200/50 px-3 py-2 max-w-[240px]">
+                          <p class="text-xs font-medium text-amber-800 mb-0.5">Why they ordered in</p>
+                          <p class="text-sm text-stone-600"><%= meal_reason %></p>
+                        </div>
                       <% end %>
-                    </ul>
-                  </div>
-                <% end %>
+                    </div>
+                  <% end %>
+                </div>
                 <% if consumed.present? && consumed["energy_kcal"].to_f.positive? %>
-                  <p class="text-xs text-stone-500">
+                  <p class="text-xs text-stone-500 mt-3">
                     <%= consumed["energy_kcal"] %> kcal
                     <% if consumed["protein"].to_f.positive? || consumed["carbohydrate"].to_f.positive? || consumed["fat"].to_f.positive? %>
                       · P <%= consumed["protein"] %>g · C <%= consumed["carbohydrate"] %>g · F <%= consumed["fat"] %>g
@@ -262,6 +264,9 @@
 
     <%= content_for :head do %>
       <script type="application/json" id="initial-food-items"><%= raw @initial_food_items.to_json.gsub("</", "<\\/") %></script>
+      <script>
+        window.nutriPatientData = <%= raw (@selected_patient ? { patient_id: @selected_patient.id, medications: (@selected_patient.medical_history&.dig("medications") || ""), diseases: (@selected_patient.medical_history&.dig("diseases", "details") || "") }.to_json : "null") %>;
+      </script>
       <script>
         function initFindFood() {
           const btn = document.querySelector("[data-find-food-trigger]");
@@ -307,6 +312,16 @@
               orderBtn.disabled = true;
               orderBtn.textContent = "…";
               try {
+                const checkRes = await fetch("/check_food_medication", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json", "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]')?.content || "", "Accept": "application/json" },
+                  body: JSON.stringify({ patient_id: patientId, food_item: { name: name, description: desc } })
+                });
+                const checkData = await checkRes.json();
+                if (checkData.has_risk && checkData.warning_message) {
+                  if (typeof window.openChat === "function") window.openChat();
+                  if (typeof window.addMedicationWarning === "function") window.addMedicationWarning(checkData.warning_message);
+                }
                 const res = await fetch("/add_to_food_log", {
                   method: "POST",
                   headers: { "Content-Type": "application/json", "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]')?.content || "", "Accept": "application/json" },
@@ -714,26 +729,27 @@
               dateDisplay = d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
             } catch (_) {}
             html += '<div class="rounded-xl border border-amber-200/60 bg-amber-50/30 p-4">';
-            html += '<p class="text-sm font-semibold text-stone-700 mb-2">' + escapeHtml(dateDisplay) + '</p>';
-            html += '<ul class="space-y-1.5 mb-3">';
+            html += '<p class="text-sm font-semibold text-stone-700 mb-3">' + escapeHtml(dateDisplay) + '</p>';
+            html += '<div class="space-y-3">';
+            var reasonsLeft = (entry._order_reasons || entry["_order_reasons"] || []).slice();
             (entry.meals || []).forEach(function(meal) {
-              html += '<li class="text-sm text-stone-600 flex items-center gap-2"><span class="text-amber-500">•</span>' + escapeHtml(meal.text || '') + '</li>';
+              var mealReason = meal.reason || reasonsLeft.shift();
+              html += '<div class="flex flex-wrap items-start gap-3">';
+              html += '<div class="flex-1 min-w-0"><p class="text-sm text-stone-600 flex items-center gap-2"><span class="text-amber-500">•</span>' + escapeHtml(meal.text || '') + '</p></div>';
+              if (mealReason) {
+                html += '<div class="shrink-0 rounded-lg bg-white/80 border border-amber-200/50 px-3 py-2 max-w-[240px]">';
+                html += '<p class="text-xs font-medium text-amber-800 mb-0.5">Why they ordered in</p>';
+                html += '<p class="text-sm text-stone-600">' + escapeHtml(mealReason) + '</p></div>';
+              }
+              html += '</div>';
             });
-            html += '</ul>';
-            var reasons = entry._order_reasons || entry["_order_reasons"] || [];
-            if (Array.isArray(reasons) && reasons.length > 0) {
-              html += '<div class="mb-3 rounded-lg bg-white/80 border border-amber-200/50 px-3 py-2">';
-              html += '<p class="text-xs font-medium text-amber-800 mb-0.5">Why they ordered in</p>';
-              html += '<ul class="space-y-1 text-sm text-stone-600">';
-              reasons.forEach(function(r) { html += '<li>' + escapeHtml(r) + '</li>'; });
-              html += '</ul></div>';
-            }
+            html += '</div>';
             if (consumed.energy_kcal > 0) {
               let nut = consumed.energy_kcal + ' kcal';
               if (consumed.protein > 0 || consumed.carbohydrate > 0 || consumed.fat > 0) {
                 nut += ' · P ' + (consumed.protein || '—') + 'g · C ' + (consumed.carbohydrate || '—') + 'g · F ' + (consumed.fat || '—') + 'g';
               }
-              html += '<p class="text-xs text-stone-500">' + escapeHtml(nut) + '</p>';
+              html += '<p class="text-xs text-stone-500 mt-3">' + escapeHtml(nut) + '</p>';
             }
             html += '</div>';
           });

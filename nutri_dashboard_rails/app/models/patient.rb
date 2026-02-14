@@ -11,8 +11,11 @@ class Patient < ApplicationRecord
 
   def food_diary
     infos = patient_infos || {}
-    infos["food_diary_history_and_obs"] ||
-      infos.dig("dietary_history", "food_diary_history_and_obs") || []
+    # Canonical source: dietary_history (where add_to_food_log/save_order_reason write)
+    diary = infos.dig("dietary_history", "food_diary_history_and_obs") || []
+    return diary if diary.present?
+    # Fallback: legacy top-level (seed data)
+    infos["food_diary_history_and_obs"] || []
   end
 
   def last_order_out
@@ -86,6 +89,8 @@ class Patient < ApplicationRecord
     diary_by_date = food_diary.index_by { |e| e["date"].to_s }
     consumed_by_date.keys.sort.reverse.map do |date|
       entry = diary_by_date[date] || { "date" => date, "meals" => [], "observations" => "Ordered out" }
+      # Ensure meals array exists and is an array
+      entry["meals"] = Array(entry["meals"] || [])
       reasons = reason_by_date[date]
       reasons = Array(reasons) if reasons.present?
       entry.merge("_consumed" => consumed_by_date[date], "_order_reasons" => reasons || [])
