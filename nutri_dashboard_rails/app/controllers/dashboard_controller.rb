@@ -4,6 +4,8 @@ require "net/http"
 require "json"
 
 class DashboardController < ApplicationController
+  skip_before_action :verify_authenticity_token, only: [:nutrition, :add_to_food_log]
+
   FOOD_FINDER_URL = ENV.fetch("FOOD_FINDER_URL", "http://127.0.0.1:5001")
 
   def index
@@ -12,6 +14,39 @@ class DashboardController < ApplicationController
     if params[:patient_id].present?
       @selected_patient = Patient.find_by(id: params[:patient_id]) || @selected_patient
     end
+    @initial_food_items = fetch_initial_food_items(@selected_patient)
+  end
+
+  def fetch_initial_food_items(patient)
+    return [] unless patient
+
+    food = fetch_from_api("/cached_food?patient_id=#{patient.id}&city=braga-norte")
+    basket = fetch_from_api("/cached_grocery_basket?patient_id=#{patient.id}&city=braga-norte")
+    return [] if food.nil? && basket.nil?
+
+    restaurant_items = (food&.dig("items") || []).map { |i| i.merge("from_cache" => food["from_cache"]) }
+    basket_items = (basket&.dig("items") || []).map do |i|
+      i.merge(
+        "restaurant" => basket["store"] || i["restaurant"],
+        "restaurant_url" => basket["store_url"] || i["restaurant_url"],
+        "store_url" => basket["store_url"]
+      )
+    end
+    (restaurant_items + basket_items).shuffle.take(20)
+  end
+
+  def fetch_from_api(path)
+    uri = URI("#{FOOD_FINDER_URL}#{path}")
+    http = Net::HTTP.new(uri.host, uri.port)
+    http.use_ssl = uri.scheme == "https"
+    http.open_timeout = 3
+    http.read_timeout = 5
+    response = http.get(uri)
+    return nil unless response.is_a?(Net::HTTPSuccess)
+
+    JSON.parse(response.body)
+  rescue Errno::ECONNREFUSED, SocketError, JSON::ParserError
+    nil
   end
 
   def cached_grocery_basket
@@ -164,6 +199,8 @@ class DashboardController < ApplicationController
     meal_type = params[:meal_type].presence || "Refeição"
     return render json: { error: "No items to add" }, status: :bad_request if items.empty?
 
+    from_order = params[:from_order].to_s == "true" || params[:from_order] == true
+
     infos = patient.patient_infos || {}
     diary_key = "food_diary_history_and_obs"
     dietary = infos["dietary_history"] || infos.dig("dietary_history") || {}
@@ -177,10 +214,11 @@ class DashboardController < ApplicationController
       }
     end
 
+    obs = from_order ? "Ordered out" : "Ordered via Nutri-Uber basket"
     new_entry = {
       "date" => today,
       "meals" => meals,
-      "observations" => "Ordered via Nutri-Uber basket"
+      "observations" => obs
     }
 
     existing_today = diary.find { |e| e["date"] == today }
@@ -189,7 +227,7 @@ class DashboardController < ApplicationController
       existing_today["meals"].concat(meals)
       existing_today["observations"] = [
         existing_today["observations"],
-        "Ordered via Nutri-Uber basket"
+        obs
       ].compact.join("\n")
     else
       diary << new_entry
@@ -197,9 +235,41 @@ class DashboardController < ApplicationController
 
     infos["dietary_history"] ||= {}
     infos["dietary_history"][diary_key] = diary
+    infos["last_order_out"] = today if from_order
+
+    if from_order
+      consumed_by_date = infos["order_out_consumed_by_date"] || {}
+      consumed_today = consumed_by_date[today] || { "energy_kcal" => 0, "protein" => 0, "carbohydrate" => 0, "fat" => 0, "fiber" => 0 }
+      items.each do |item|
+        nut = item["nutriments"] || item["nutrients"] || {}
+        energy = (nut["energy_kcal"] || nut["energy"] || 0).to_f
+        has_macros = ((nut["protein"] || 0).to_f + (nut["carbohydrate"] || nut["carbs"] || 0).to_f + (nut["fat"] || 0).to_f) > 0
+        if energy.zero? && !has_macros
+          energy = 500.0
+          consumed_today["protein"] += 30.0
+          consumed_today["carbohydrate"] += 55.0
+          consumed_today["fat"] += 17.0
+          consumed_today["fiber"] += 3.0
+        else
+          consumed_today["protein"] += (nut["protein"] || 0).to_f
+          consumed_today["carbohydrate"] += (nut["carbohydrate"] || nut["carbs"] || 0).to_f
+          consumed_today["fat"] += (nut["fat"] || 0).to_f
+          consumed_today["fiber"] += (nut["fiber"] || 0).to_f
+        end
+        consumed_today["energy_kcal"] += energy
+      end
+      consumed_today["energy_kcal"] = consumed_today["energy_kcal"].round
+      consumed_today["protein"] = consumed_today["protein"].round(1)
+      consumed_today["carbohydrate"] = consumed_today["carbohydrate"].round(1)
+      consumed_today["fat"] = consumed_today["fat"].round(1)
+      consumed_today["fiber"] = consumed_today["fiber"].round(1)
+      consumed_by_date[today] = consumed_today
+      infos["order_out_consumed_by_date"] = consumed_by_date
+    end
+
     patient.update!(patient_infos: infos)
 
-    render json: { status: "ok", message: "Added to food log", diary: diary }
+    render json: { status: "ok", message: "Added to food log", diary: diary, last_order_out: infos["last_order_out"] }
   rescue StandardError => e
     render json: { error: e.message }, status: :internal_server_error
   end
@@ -245,14 +315,28 @@ class DashboardController < ApplicationController
     q = params[:q].to_s.strip
     return render json: { error: "q (query) required" }, status: :bad_request if q.blank?
 
-    uri = URI("#{FOOD_FINDER_URL}/nutrition")
-    uri.query = URI.encode_www_form(q: q)
-    http = Net::HTTP.new(uri.host, uri.port)
-    http.use_ssl = uri.scheme == "https"
-    http.open_timeout = 3
-    http.read_timeout = 8
+    description = params[:description].to_s.strip
+    image_url = params[:image_url].to_s.strip.presence
+    refresh = params[:refresh].to_s == "1" || params[:refresh] == true
 
-    response = http.get(uri)
+    http = Net::HTTP.new(URI(FOOD_FINDER_URL).host, URI(FOOD_FINDER_URL).port)
+    http.use_ssl = URI(FOOD_FINDER_URL).scheme == "https"
+    http.open_timeout = 3
+    http.read_timeout = 15
+
+    if image_url.present? || description.present?
+      uri = URI("#{FOOD_FINDER_URL}/nutrition")
+      uri.query = "refresh=1" if refresh
+      request = Net::HTTP::Post.new(uri)
+      request["Content-Type"] = "application/json"
+      request.body = { q: q, description: description, image_url: image_url, refresh: refresh }.to_json
+      response = http.request(request)
+    else
+      uri = URI("#{FOOD_FINDER_URL}/nutrition")
+      uri.query = URI.encode_www_form(refresh ? { q: q, refresh: "1" } : { q: q })
+      response = http.get(uri)
+    end
+
     body = JSON.parse(response.body)
 
     if response.is_a?(Net::HTTPSuccess)

@@ -17,21 +17,44 @@
     </div>
   </section>
 
+  <% if @selected_patient && @selected_patient.last_order_out.present? %>
+    <% last_date = @selected_patient.last_order_out %>
+    <% begin; last_display = Date.parse(last_date.to_s).strftime("%B %d, %Y"); rescue; last_display = last_date; end %>
+    <div class="rounded-2xl border border-amber-200/80 bg-gradient-to-r from-amber-50 to-orange-50/50 p-5 shadow-sm" data-order-reminder-banner>
+      <p class="text-sm font-medium text-amber-800">
+        <span aria-hidden="true">💛</span>
+        Last time you ordered out: <strong><%= last_display %></strong>
+      </p>
+      <p class="mt-2 text-sm text-amber-700/90 leading-relaxed">
+        Cooking at home isn’t just healthier—it’s a small act of care for yourself. Every meal you make is a step toward feeling better. You’ve got this.
+      </p>
+    </div>
+  <% end %>
+
   <% if @selected_patient %>
     <section class="rounded-2xl bg-gradient-to-br from-amber-500/10 via-amber-50 to-emerald-500/10 border border-stone-200/80 shadow-sm p-6 sm:p-8">
       <h2 class="font-display text-lg font-semibold text-stone-800 mb-4 flex items-center gap-2">
         <span aria-hidden="true">🎯</span>
         Daily nutrition goals
+        <% if @selected_patient.ordered_out_today? %>
+          <span class="text-xs font-normal text-amber-600">(remaining after order)</span>
+        <% end %>
       </h2>
-      <% total_macros = @selected_patient.protein_grams.to_f + @selected_patient.carbohydrate_grams.to_f + @selected_patient.fat_grams.to_f %>
-      <% pct_p = total_macros > 0 ? (@selected_patient.protein_grams.to_f / total_macros) * 100 : 0 %>
-      <% pct_c = total_macros > 0 ? (@selected_patient.carbohydrate_grams.to_f / total_macros) * 100 : 0 %>
-      <% pct_f = total_macros > 0 ? (@selected_patient.fat_grams.to_f / total_macros) * 100 : 0 %>
+      <% eff_protein = @selected_patient.effective_protein_grams %>
+      <% eff_carbs = @selected_patient.effective_carbohydrate_grams %>
+      <% eff_fat = @selected_patient.effective_fat_grams %>
+      <% consumed = @selected_patient.order_out_consumed_today %>
+      <% base_p = @selected_patient.protein_grams.to_f %>
+      <% base_c = @selected_patient.carbohydrate_grams.to_f %>
+      <% base_f = @selected_patient.fat_grams.to_f %>
+      <% pct_p = base_p > 0 ? [(consumed["protein"].to_f / base_p) * 100, 100].min : 0 %>
+      <% pct_c = base_c > 0 ? [(consumed["carbohydrate"].to_f / base_c) * 100, 100].min : 0 %>
+      <% pct_f = base_f > 0 ? [(consumed["fat"].to_f / base_f) * 100, 100].min : 0 %>
       <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6">
         <div>
           <p class="text-sm text-stone-500 mb-0.5">Total energy (DEE)</p>
           <p class="text-4xl sm:text-5xl font-display font-bold text-amber-600">
-            <%= @selected_patient.dee_goal %>
+            <%= @selected_patient.effective_dee_goal %>
             <span class="text-xl font-normal text-stone-500"><%= @selected_patient.dee_goal_unit.presence || "kcal" %></span>
           </p>
         </div>
@@ -41,25 +64,26 @@
             <div class="flex-1 h-2.5 bg-stone-200 rounded-full overflow-hidden">
               <div class="h-full bg-orange-500 rounded-full transition-all" style="width: <%= pct_p %>%"></div>
             </div>
-            <span class="text-sm font-semibold text-stone-700 w-12 text-right"><%= @selected_patient.protein_grams %>g</span>
+            <span class="text-sm font-semibold text-stone-700 w-12 text-right"><%= eff_protein == eff_protein.to_i ? eff_protein.to_i : "%.1f" % eff_protein %>g</span>
           </div>
           <div class="flex items-center gap-3">
             <span class="text-xs font-medium text-stone-500 w-16">Carbs</span>
             <div class="flex-1 h-2.5 bg-stone-200 rounded-full overflow-hidden">
               <div class="h-full bg-amber-500 rounded-full transition-all" style="width: <%= pct_c %>%"></div>
             </div>
-            <span class="text-sm font-semibold text-stone-700 w-12 text-right"><%= @selected_patient.carbohydrate_grams %>g</span>
+            <span class="text-sm font-semibold text-stone-700 w-12 text-right"><%= eff_carbs == eff_carbs.to_i ? eff_carbs.to_i : "%.1f" % eff_carbs %>g</span>
           </div>
           <div class="flex items-center gap-3">
             <span class="text-xs font-medium text-stone-500 w-16">Fat</span>
             <div class="flex-1 h-2.5 bg-stone-200 rounded-full overflow-hidden">
               <div class="h-full bg-emerald-600 rounded-full transition-all" style="width: <%= pct_f %>%"></div>
             </div>
-            <span class="text-sm font-semibold text-stone-700 w-12 text-right"><%= @selected_patient.fat_grams %>g</span>
+            <span class="text-sm font-semibold text-stone-700 w-12 text-right"><%= eff_fat == eff_fat.to_i ? eff_fat.to_i : "%.1f" % eff_fat %>g</span>
           </div>
           <div class="pt-2 flex items-center gap-2 text-sm text-stone-600">
             <span aria-hidden="true">🌾</span>
-            <span><strong>Fiber:</strong> <%= @selected_patient.fiber_grams %>g/day</span>
+            <% eff_fiber = @selected_patient.effective_fiber_grams %>
+            <span><strong>Fiber:</strong> <%= eff_fiber == eff_fiber.to_i ? eff_fiber.to_i : "%.1f" % eff_fiber %>g/day</span>
           </div>
         </div>
       </div>
@@ -141,9 +165,9 @@
         data-find-food-trigger
         class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium text-sm bg-emerald-600 text-white hover:bg-emerald-700 transition-colors shadow-md disabled:opacity-50 disabled:cursor-not-allowed">
         <span data-find-food-spinner class="hidden">⏳</span>
-        <span data-find-food-label>Find food for <%= @selected_patient.patient_name %></span>
+        <span data-find-food-label>Find food</span>
       </button>
-      <div data-find-food-results class="mt-6 hidden">
+      <div data-find-food-results class="mt-6 <%= @initial_food_items.any? ? '' : 'hidden' %>">
         <div class="flex flex-wrap items-center gap-3 mb-4">
           <p class="text-sm font-medium text-stone-700" data-find-food-count></p>
           <button type="button" data-add-to-log
@@ -193,7 +217,46 @@
         <p class="text-stone-500 text-sm py-4">No food diary entries yet.</p>
       <% end %>
     </section>
+
+    <% order_out_list = @selected_patient.order_out_entries %>
+    <section class="rounded-2xl bg-white border border-stone-200/80 shadow-sm p-6 sm:p-8">
+      <h2 class="font-display text-lg font-semibold text-stone-800 mb-4 flex items-center gap-2">
+        <span aria-hidden="true">🥡</span>
+        Eating out
+      </h2>
+      <% if order_out_list.any? %>
+        <div class="space-y-4">
+          <% order_out_list.each do |entry| %>
+            <% consumed = entry["_consumed"] || {} %>
+            <% date_display = begin; Date.parse(entry["date"].to_s).strftime("%B %d, %Y"); rescue; entry["date"]; end %>
+            <div class="rounded-xl border border-amber-200/60 bg-amber-50/30 p-4">
+              <p class="text-sm font-semibold text-stone-700 mb-2"><%= date_display %></p>
+              <ul class="space-y-1.5 mb-3">
+                <% (entry["meals"] || []).each do |meal| %>
+                  <li class="text-sm text-stone-600 flex items-center gap-2">
+                    <span class="text-amber-500">•</span>
+                    <%= meal["text"] %>
+                  </li>
+                <% end %>
+              </ul>
+              <% if consumed.present? && consumed["energy_kcal"].to_f.positive? %>
+                <p class="text-xs text-stone-500">
+                  <%= consumed["energy_kcal"] %> kcal
+                  <% if consumed["protein"].to_f.positive? || consumed["carbohydrate"].to_f.positive? || consumed["fat"].to_f.positive? %>
+                    · P <%= consumed["protein"] %>g · C <%= consumed["carbohydrate"] %>g · F <%= consumed["fat"] %>g
+                  <% end %>
+                </p>
+              <% end %>
+            </div>
+          <% end %>
+        </div>
+      <% else %>
+        <p class="text-stone-500 text-sm py-4">No eating out recorded yet.</p>
+      <% end %>
+    </section>
+
     <%= content_for :head do %>
+      <script type="application/json" id="initial-food-items"><%= raw @initial_food_items.to_json.gsub("</", "<\\/") %></script>
       <script>
         function initFindFood() {
           const btn = document.querySelector("[data-find-food-trigger]");
@@ -203,6 +266,126 @@
           const listEl = document.querySelector("[data-find-food-list]");
           const countEl = document.querySelector("[data-find-food-count]");
           const errorEl = document.querySelector("[data-find-food-error]");
+          if (!listEl) return;
+
+          listEl.addEventListener("click", async (e) => {
+            const orderBtn = e.target.closest("[data-order-btn]");
+            if (orderBtn) {
+              e.preventDefault();
+              const card = orderBtn.closest("[data-item-name]");
+              const url = orderBtn.dataset.orderUrl || "#";
+              if (!card || !url || url === "#") return;
+              const name = card.dataset.itemName || "";
+              const restaurant = card.dataset.itemRestaurant || "";
+              let nutriments = null;
+              try {
+                const nutStr = card.dataset.itemNutrition || card.getAttribute("data-item-nutrition") || "";
+                if (nutStr) nutriments = JSON.parse(nutStr);
+              } catch (_) {}
+              const item = { name: name, restaurant: restaurant };
+              if (nutriments && Object.keys(nutriments).length) item.nutriments = nutriments;
+              orderBtn.disabled = true;
+              orderBtn.textContent = "…";
+              try {
+                const res = await fetch("/add_to_food_log", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json", "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]')?.content || "", "Accept": "application/json" },
+                  body: JSON.stringify({ patient_id: patientId, items: [item], meal_type: "Refeição", from_order: true })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                  window.open(url, "_blank", "noopener");
+                  window.location.reload();
+                } else {
+                  alert(data.error || "Could not add to log");
+                  orderBtn.disabled = false;
+                  orderBtn.textContent = "Order →";
+                }
+              } catch (err) {
+                alert(err.message || "Failed");
+                orderBtn.disabled = false;
+                orderBtn.textContent = "Order →";
+              }
+              return;
+            }
+            const refreshBtn = e.target.closest("[data-refresh-nutrition]");
+            if (!refreshBtn) return;
+            e.preventDefault();
+            e.stopPropagation();
+            const panel = refreshBtn.closest("[data-nutrition-panel]");
+            const card = panel?.closest("[data-item-name]");
+            if (!panel || !card) return;
+            const name = card.dataset.itemName || "";
+            panel.innerHTML = '<div class="p-6 text-center text-amber-600 text-sm">Loading…</div>';
+            try {
+              const desc = (card.dataset.itemDescription || "").trim();
+              const imgUrl = (card.dataset.itemImageUrl || "").trim();
+              let res;
+              if (imgUrl || desc) {
+                res = await fetch("/nutrition?refresh=1", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json", "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]')?.content || "", "Accept": "application/json" },
+                  body: JSON.stringify({ q: name, description: desc, image_url: imgUrl, refresh: true })
+                });
+              } else {
+                res = await fetch("/nutrition?q=" + encodeURIComponent(name) + "&refresh=1");
+              }
+              const data = await res.json();
+              if (data.error) {
+                panel.innerHTML = '<div class="p-6 text-center text-red-600 text-sm">' + escapeHtml(data.error) + '</div>';
+                return;
+              }
+              const nut = data.nutriments || {};
+              const p = (nut.protein || 0), c = (nut.carbohydrate || 0), f = (nut.fat || 0);
+              const totalMacro = p + c + f;
+              const hasMacros = totalMacro > 0;
+              const pctP = hasMacros ? (p / totalMacro) * 100 : 33.3;
+              const pctC = hasMacros ? (c / totalMacro) * 100 : 33.3;
+              const pctF = hasMacros ? (f / totalMacro) * 100 : 33.3;
+              const conic = hasMacros
+                ? `conic-gradient(#ea580c 0% ${pctP}%, #d97706 ${pctP}% ${pctP + pctC}%, #059669 ${pctP + pctC}% 100%)`
+                : "conic-gradient(#e7e5e4 0% 100%)";
+              const energy = nut.energy_kcal != null ? nut.energy_kcal : null;
+              const hasAny = energy != null || hasMacros || (nut.fiber != null || nut.sugar != null || nut.sodium != null || nut.salt != null);
+              const extras = [
+                { icon: "🌿", label: "Fiber", val: nut.fiber, unit: "g" },
+                { icon: "🍬", label: "Sugar", val: nut.sugar, unit: "g" },
+                { icon: "🧂", label: "Sodium", val: nut.sodium, unit: "g" },
+                { icon: "🧂", label: "Salt", val: nut.salt, unit: "g" }
+              ].filter(x => x.val != null);
+              let html = '<div class="p-5 space-y-4">';
+              html += '<div class="flex items-center gap-4">';
+              html += '<div class="shrink-0 w-20 h-20 rounded-full border-4 border-white shadow-md" style="background: ' + conic + '"></div>';
+              html += '<div class="flex-1 min-w-0 space-y-1">';
+              if (energy != null) html += '<div class="text-lg font-bold text-stone-800">' + escapeHtml(String(energy)) + ' <span class="text-sm font-normal text-stone-500">kcal</span></div>';
+              html += '<div class="flex flex-wrap gap-x-3 gap-y-0.5 text-xs">';
+              if (hasMacros) {
+                html += '<span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-orange-500"></span> Protein ' + escapeHtml(String(p)) + 'g</span>';
+                html += '<span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-amber-500"></span> Carbs ' + escapeHtml(String(c)) + 'g</span>';
+                html += '<span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald-600"></span> Fat ' + escapeHtml(String(f)) + 'g</span>';
+              } else {
+                html += '<span class="text-stone-500">Macros not available</span>';
+              }
+              html += '</div></div></div>';
+              if (extras.length) {
+                html += '<div class="flex flex-wrap gap-2">';
+                extras.forEach(x => {
+                  html += '<div class="flex items-center gap-1.5 rounded-lg bg-white/80 px-3 py-1.5 text-xs shadow-sm border border-stone-100"><span>' + x.icon + '</span><span class="text-stone-600">' + escapeHtml(x.label) + '</span><span class="font-semibold text-stone-800">' + escapeHtml(String(x.val)) + x.unit + '</span></div>';
+                });
+                html += '</div>';
+              }
+              if (data.source) html += '<div class="pt-1 text-[10px] text-stone-400">Source: ' + escapeHtml(data.source === "openai_vision" ? "AI estimate" : data.source === "generic_estimate" ? "Rough estimate" : "Open Food Facts") + (data.confidence ? ' · ' + escapeHtml(data.confidence) + ' confidence' : '') + '</div>';
+              if (data.notes) html += '<div class="pt-0.5 text-[10px] text-stone-500 italic">' + escapeHtml(data.notes) + '</div>';
+              html += '<div class="pt-2"><button type="button" data-refresh-nutrition class="text-xs text-amber-600 hover:text-amber-700 hover:underline">Refresh values</button></div>';
+              html += '</div>';
+              panel.innerHTML = hasAny ? html : '<div class="p-6 text-center text-stone-500 text-sm">No nutrition data found</div><div class="p-2"><button type="button" data-refresh-nutrition class="text-xs text-amber-600 hover:text-amber-700 hover:underline">Refresh values</button></div>';
+              panel.dataset.loaded = "1";
+              card.dataset.itemNutrition = JSON.stringify(nut);
+              card.dataset.itemNutritionSource = data.source || "";
+            } catch (err) {
+              panel.innerHTML = '<div class="p-6 text-center text-red-600 text-sm">Failed to load</div>';
+            }
+          });
 
           function shuffle(arr) {
             const a = [...arr];
@@ -251,8 +434,12 @@
                 orderUrl = "https://www.ubereats.com/pt-en/feed?q=" + encodeURIComponent(item.name || "");
               }
               const roleBadge = item.basket_role ? `<span class="text-xs px-2 py-0.5 rounded bg-amber-200 text-amber-800">${escapeHtml(item.basket_role)}</span>` : "";
+              const itemDesc = (item.description || "").trim();
+              const itemImg = (item.image_url && item.image_url.startsWith("http")) ? item.image_url : "";
+              const itemNut = item.nutriments ? JSON.stringify(item.nutriments) : "";
+              const itemNutSource = item.nutrition_source || "";
               return `
-              <div class="shrink-0 w-72 snap-center rounded-2xl overflow-hidden bg-white border border-stone-200/80 shadow-md hover:shadow-lg transition-shadow flex flex-col" data-item-name="${escapeHtml(item.name)}">
+              <div class="shrink-0 w-72 snap-center rounded-2xl overflow-hidden bg-white border border-stone-200/80 shadow-md hover:shadow-lg transition-shadow flex flex-col" data-item-name="${escapeHtml(item.name)}" data-item-restaurant="${escapeHtml(item.restaurant || '')}" data-item-description="${escapeHtml(itemDesc)}" data-item-image-url="${escapeHtml(itemImg)}" data-item-nutrition="${escapeHtml(itemNut)}" data-item-nutrition-source="${escapeHtml(itemNutSource)}">
                 <div class="block cursor-default">
                   <div class="aspect-[7/4] bg-stone-100 overflow-hidden">
                     <img src="${escapeHtml(primaryImg)}" alt="${escapeHtml(item.name)}" class="w-full h-full object-cover" loading="lazy" data-fallback="${escapeHtml(defaultPlaceholder)}" onerror="this.onerror=null;this.src=this.dataset.fallback"/>
@@ -269,9 +456,9 @@
                     </div>
                     <div class="flex items-center justify-between mt-auto gap-3">
                       <span class="text-xl font-bold text-stone-800">${escapeHtml(item.price || "—")}</span>
-                      <a href="${escapeHtml(orderUrl)}" target="_blank" rel="noopener" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium text-sm bg-emerald-600 text-white hover:bg-emerald-700 transition-colors shadow-sm shrink-0">
+                      <button type="button" data-order-btn class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium text-sm bg-emerald-600 text-white hover:bg-emerald-700 transition-colors shadow-sm shrink-0" data-order-url="${escapeHtml(orderUrl)}">
                         Order →
-                      </a>
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -299,58 +486,94 @@
                   listEl.querySelectorAll("[data-nutrition-panel]").forEach(p => { p.classList.add("hidden"); });
                   listEl.querySelectorAll("[data-nutrition-label]").forEach(l => { l.textContent = "View nutrition"; });
                   listEl.querySelectorAll("[data-nutrition-chevron]").forEach(c => { c.textContent = "▾"; });
-                  if (!panel.dataset.loaded) {
-                    panel.innerHTML = '<div class="p-6 text-center text-amber-600 text-sm">Loading…</div>';
+                  const forceRefresh = panel.dataset.forceRefresh === "1";
+                  let nut = {};
+                  let data = { source: "", notes: "" };
+                  const embeddedNut = card.dataset.itemNutrition;
+                  if (embeddedNut && !forceRefresh) {
                     try {
-                      const res = await fetch("/nutrition?q=" + encodeURIComponent(name));
-                      const data = await res.json();
-                      const nut = data.nutriments || {};
-                      const p = (nut.protein || 0), c = (nut.carbohydrate || 0), f = (nut.fat || 0);
-                      const totalMacro = p + c + f;
-                      const hasMacros = totalMacro > 0;
-                      const pctP = hasMacros ? (p / totalMacro) * 100 : 33.3;
-                      const pctC = hasMacros ? (c / totalMacro) * 100 : 33.3;
-                      const pctF = hasMacros ? (f / totalMacro) * 100 : 33.3;
-                      const conic = hasMacros
-                        ? `conic-gradient(#ea580c 0% ${pctP}%, #d97706 ${pctP}% ${pctP + pctC}%, #059669 ${pctP + pctC}% 100%)`
-                        : "conic-gradient(#e7e5e4 0% 100%)";
-                      const energy = nut.energy_kcal != null ? nut.energy_kcal : null;
-                      const hasAny = energy != null || hasMacros || (nut.fiber != null || nut.sugar != null || nut.sodium != null || nut.salt != null);
-                      const extras = [
-                        { icon: "🌿", label: "Fiber", val: nut.fiber, unit: "g" },
-                        { icon: "🍬", label: "Sugar", val: nut.sugar, unit: "g" },
-                        { icon: "🧂", label: "Sodium", val: nut.sodium, unit: "g" },
-                        { icon: "🧂", label: "Salt", val: nut.salt, unit: "g" }
-                      ].filter(x => x.val != null);
-                      let html = '<div class="p-5 space-y-4">';
-                      html += '<div class="flex items-center gap-4">';
-                      html += '<div class="shrink-0 w-20 h-20 rounded-full border-4 border-white shadow-md" style="background: ' + conic + '"></div>';
-                      html += '<div class="flex-1 min-w-0 space-y-1">';
-                      if (energy != null) html += '<div class="text-lg font-bold text-stone-800">' + escapeHtml(String(energy)) + ' <span class="text-sm font-normal text-stone-500">kcal</span></div>';
-                      html += '<div class="flex flex-wrap gap-x-3 gap-y-0.5 text-xs">';
-                      if (hasMacros) {
-                        html += '<span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-orange-500"></span> Protein ' + escapeHtml(String(p)) + 'g</span>';
-                        html += '<span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-amber-500"></span> Carbs ' + escapeHtml(String(c)) + 'g</span>';
-                        html += '<span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald-600"></span> Fat ' + escapeHtml(String(f)) + 'g</span>';
-                      } else {
-                        html += '<span class="text-stone-500">Macros not available</span>';
+                      nut = JSON.parse(embeddedNut) || {};
+                      data.source = card.dataset.itemNutritionSource || "openfoodfacts";
+                    } catch (_) {}
+                  }
+                  const hasEmbedded = Object.keys(nut).length > 0;
+                  if (!hasEmbedded || forceRefresh) {
+                    if (forceRefresh) delete panel.dataset.forceRefresh;
+                    if (!panel.dataset.loaded || forceRefresh) {
+                      panel.innerHTML = '<div class="p-6 text-center text-amber-600 text-sm">Loading…</div>';
+                      try {
+                        const desc = (card.dataset.itemDescription || "").trim();
+                        const imgUrl = (card.dataset.itemImageUrl || "").trim();
+                        const refreshSuffix = forceRefresh ? "&refresh=1" : "";
+                        const refreshPrefix = forceRefresh ? "?refresh=1" : "";
+                        let res;
+                        if (imgUrl || desc) {
+                          res = await fetch("/nutrition" + refreshPrefix, {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json", "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]')?.content || "", "Accept": "application/json" },
+                            body: JSON.stringify({ q: name, description: desc, image_url: imgUrl, refresh: forceRefresh })
+                          });
+                        } else {
+                          res = await fetch("/nutrition?q=" + encodeURIComponent(name) + refreshSuffix);
+                        }
+                        data = await res.json();
+                        if (data.error) {
+                          panel.innerHTML = '<div class="p-6 text-center text-red-600 text-sm">' + escapeHtml(data.error) + '</div>';
+                          return;
+                        }
+                        nut = data.nutriments || {};
+                      } catch (err) {
+                        panel.innerHTML = '<div class="p-6 text-center text-red-600 text-sm">Failed to load</div>';
+                        return;
                       }
-                      html += '</div></div></div>';
-                      if (extras.length) {
-                        html += '<div class="flex flex-wrap gap-2">';
-                        extras.forEach(x => {
-                          html += '<div class="flex items-center gap-1.5 rounded-lg bg-white/80 px-3 py-1.5 text-xs shadow-sm border border-stone-100"><span>' + x.icon + '</span><span class="text-stone-600">' + escapeHtml(x.label) + '</span><span class="font-semibold text-stone-800">' + escapeHtml(String(x.val)) + x.unit + '</span></div>';
-                        });
-                        html += '</div>';
-                      }
-                      if (data.source) html += '<div class="pt-1 text-[10px] text-stone-400">Source: Open Food Facts</div>';
-                      html += '</div>';
-                      panel.innerHTML = hasAny ? html : '<div class="p-6 text-center text-stone-500 text-sm">No nutrition data found</div>';
-                      panel.dataset.loaded = "1";
-                    } catch (err) {
-                      panel.innerHTML = '<div class="p-6 text-center text-red-600 text-sm">Failed to load</div>';
                     }
                   }
+                  const p = (nut.protein || 0), c = (nut.carbohydrate || 0), f = (nut.fat || 0);
+                  const totalMacro = p + c + f;
+                  const hasMacros = totalMacro > 0;
+                  const pctP = hasMacros ? (p / totalMacro) * 100 : 33.3;
+                  const pctC = hasMacros ? (c / totalMacro) * 100 : 33.3;
+                  const pctF = hasMacros ? (f / totalMacro) * 100 : 33.3;
+                  const conic = hasMacros
+                    ? `conic-gradient(#ea580c 0% ${pctP}%, #d97706 ${pctP}% ${pctP + pctC}%, #059669 ${pctP + pctC}% 100%)`
+                    : "conic-gradient(#e7e5e4 0% 100%)";
+                  const energy = nut.energy_kcal != null ? nut.energy_kcal : null;
+                  const hasAny = energy != null || hasMacros || (nut.fiber != null || nut.sugar != null || nut.sodium != null || nut.salt != null);
+                  const extras = [
+                    { icon: "🌿", label: "Fiber", val: nut.fiber, unit: "g" },
+                    { icon: "🍬", label: "Sugar", val: nut.sugar, unit: "g" },
+                    { icon: "🧂", label: "Sodium", val: nut.sodium, unit: "g" },
+                    { icon: "🧂", label: "Salt", val: nut.salt, unit: "g" }
+                  ].filter(x => x.val != null);
+                  let html = '<div class="p-5 space-y-4">';
+                  html += '<div class="flex items-center gap-4">';
+                  html += '<div class="shrink-0 w-20 h-20 rounded-full border-4 border-white shadow-md" style="background: ' + conic + '"></div>';
+                  html += '<div class="flex-1 min-w-0 space-y-1">';
+                  if (energy != null) html += '<div class="text-lg font-bold text-stone-800">' + escapeHtml(String(energy)) + ' <span class="text-sm font-normal text-stone-500">kcal</span></div>';
+                  html += '<div class="flex flex-wrap gap-x-3 gap-y-0.5 text-xs">';
+                  if (hasMacros) {
+                    html += '<span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-orange-500"></span> Protein ' + escapeHtml(String(p)) + 'g</span>';
+                    html += '<span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-amber-500"></span> Carbs ' + escapeHtml(String(c)) + 'g</span>';
+                    html += '<span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald-600"></span> Fat ' + escapeHtml(String(f)) + 'g</span>';
+                  } else {
+                    html += '<span class="text-stone-500">Macros not available</span>';
+                  }
+                  html += '</div></div></div>';
+                  if (extras.length) {
+                    html += '<div class="flex flex-wrap gap-2">';
+                    extras.forEach(x => {
+                      html += '<div class="flex items-center gap-1.5 rounded-lg bg-white/80 px-3 py-1.5 text-xs shadow-sm border border-stone-100"><span>' + x.icon + '</span><span class="text-stone-600">' + escapeHtml(x.label) + '</span><span class="font-semibold text-stone-800">' + escapeHtml(String(x.val)) + x.unit + '</span></div>';
+                    });
+                    html += '</div>';
+                  }
+                  if (data.source) html += '<div class="pt-1 text-[10px] text-stone-400">Source: ' + escapeHtml(data.source === "openai_vision" ? "AI estimate" : data.source === "generic_estimate" ? "Rough estimate" : "Open Food Facts") + (data.confidence ? ' · ' + escapeHtml(data.confidence) + ' confidence' : '') + '</div>';
+                  if (data.notes) html += '<div class="pt-0.5 text-[10px] text-stone-500 italic">' + escapeHtml(data.notes) + '</div>';
+                  html += '<div class="pt-2"><button type="button" data-refresh-nutrition class="text-xs text-amber-600 hover:text-amber-700 hover:underline">Refresh values</button></div>';
+                  html += '</div>';
+                  panel.innerHTML = hasAny ? html : '<div class="p-6 text-center text-stone-500 text-sm">No nutrition data found</div><div class="p-2"><button type="button" data-refresh-nutrition class="text-xs text-amber-600 hover:text-amber-700 hover:underline">Refresh values</button></div>';
+                  panel.dataset.loaded = "1";
+                  card.dataset.itemNutrition = JSON.stringify(nut);
+                  card.dataset.itemNutritionSource = data.source || "";
                   panel.classList.remove("hidden");
                   if (label) label.textContent = "Hide nutrition";
                   if (chevron) chevron.textContent = "▴";
@@ -363,7 +586,18 @@
             });
           }
 
-          // Show cached results on load (food + basket merged)
+          // Show results on load: server-rendered initial items first, else fetch cached
+          const initialEl = document.getElementById("initial-food-items");
+          if (initialEl && initialEl.textContent) {
+            try {
+              const items = JSON.parse(initialEl.textContent);
+              if (Array.isArray(items) && items.length > 0) {
+                renderResults(items);
+                fetch(`/warm_cache?patient_id=${patientId}&city=braga-norte`).catch(() => {});
+                return;
+              }
+            } catch (_) {}
+          }
           Promise.all([
             fetch(`/cached_food?patient_id=${patientId}`).then(r => r.ok ? r.json() : null).catch(() => null),
             fetch(`/cached_grocery_basket?patient_id=${patientId}&city=braga-norte`).then(r => r.ok ? r.json() : null).catch(() => null)
@@ -402,7 +636,7 @@
             } finally {
               btn.disabled = false;
               spinner?.classList.add("hidden");
-              label.textContent = "Find food for <%= @selected_patient.patient_name %>";
+              label.textContent = "Find food";
             }
           });
 

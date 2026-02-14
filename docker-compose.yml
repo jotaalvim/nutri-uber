@@ -10,6 +10,12 @@ services:
       - nutri_cache:/app/.cache
     environment:
       - PORT=5001
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5001/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 30s
 
   nutri-dashboard:
     build: .
@@ -17,7 +23,8 @@ services:
     ports:
       - "4000:4000"
     depends_on:
-      - nutri-api
+      nutri-api:
+        condition: service_healthy
     environment:
       - RAILS_ENV=production
       - DATABASE_PATH=/app/data/nutri_dashboard.db
