@@ -322,58 +322,17 @@
               }
               const data = await res.json();
               if (data.error) {
-                panel.innerHTML = '<div class="p-6 text-center text-red-600 text-sm">' + escapeHtml(data.error) + '</div>';
+                panel.innerHTML = '<div class="p-6 space-y-3"><div class="flex flex-col items-center gap-2 py-4 rounded-lg bg-stone-50 border border-stone-200/60"><span class="text-4xl opacity-50" aria-hidden="true">📊</span><p class="text-sm text-red-600">' + escapeHtml(data.error) + '</p><button type="button" data-refresh-nutrition class="mt-1 px-3 py-1.5 rounded-lg text-xs font-medium text-stone-600 bg-white border border-stone-200 hover:bg-stone-50 transition-colors">Refresh values</button></div></div>';
                 return;
               }
               const nut = data.nutriments || {};
-              const p = (nut.protein || 0), c = (nut.carbohydrate || 0), f = (nut.fat || 0);
-              const totalMacro = p + c + f;
-              const hasMacros = totalMacro > 0;
-              const pctP = hasMacros ? (p / totalMacro) * 100 : 33.3;
-              const pctC = hasMacros ? (c / totalMacro) * 100 : 33.3;
-              const pctF = hasMacros ? (f / totalMacro) * 100 : 33.3;
-              const conic = hasMacros
-                ? `conic-gradient(#ea580c 0% ${pctP}%, #d97706 ${pctP}% ${pctP + pctC}%, #059669 ${pctP + pctC}% 100%)`
-                : "conic-gradient(#e7e5e4 0% 100%)";
-              const energy = nut.energy_kcal != null ? nut.energy_kcal : null;
-              const hasAny = energy != null || hasMacros || (nut.fiber != null || nut.sugar != null || nut.sodium != null || nut.salt != null);
-              const extras = [
-                { icon: "🌿", label: "Fiber", val: nut.fiber, unit: "g" },
-                { icon: "🍬", label: "Sugar", val: nut.sugar, unit: "g" },
-                { icon: "🧂", label: "Sodium", val: nut.sodium, unit: "g" },
-                { icon: "🧂", label: "Salt", val: nut.salt, unit: "g" }
-              ].filter(x => x.val != null);
-              let html = '<div class="p-5 space-y-4">';
-              html += '<div class="flex items-center gap-4">';
-              html += '<div class="shrink-0 w-20 h-20 rounded-full border-4 border-white shadow-md" style="background: ' + conic + '"></div>';
-              html += '<div class="flex-1 min-w-0 space-y-1">';
-              if (energy != null) html += '<div class="text-lg font-bold text-stone-800">' + escapeHtml(String(energy)) + ' <span class="text-sm font-normal text-stone-500">kcal</span></div>';
-              html += '<div class="flex flex-wrap gap-x-3 gap-y-0.5 text-xs">';
-              if (hasMacros) {
-                html += '<span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-orange-500"></span> Protein ' + escapeHtml(String(p)) + 'g</span>';
-                html += '<span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-amber-500"></span> Carbs ' + escapeHtml(String(c)) + 'g</span>';
-                html += '<span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald-600"></span> Fat ' + escapeHtml(String(f)) + 'g</span>';
-              } else {
-                html += '<span class="text-stone-500">Macros not available</span>';
-              }
-              html += '</div></div></div>';
-              if (extras.length) {
-                html += '<div class="flex flex-wrap gap-2">';
-                extras.forEach(x => {
-                  html += '<div class="flex items-center gap-1.5 rounded-lg bg-white/80 px-3 py-1.5 text-xs shadow-sm border border-stone-100"><span>' + x.icon + '</span><span class="text-stone-600">' + escapeHtml(x.label) + '</span><span class="font-semibold text-stone-800">' + escapeHtml(String(x.val)) + x.unit + '</span></div>';
-                });
-                html += '</div>';
-              }
-              if (data.source) html += '<div class="pt-1 text-[10px] text-stone-400">Source: ' + escapeHtml(data.source === "openai_vision" ? "AI estimate" : data.source === "generic_estimate" ? "Rough estimate" : "Open Food Facts") + (data.confidence ? ' · ' + escapeHtml(data.confidence) + ' confidence' : '') + '</div>';
-              if (data.notes) html += '<div class="pt-0.5 text-[10px] text-stone-500 italic">' + escapeHtml(data.notes) + '</div>';
-              html += '<div class="pt-2"><button type="button" data-refresh-nutrition class="text-xs text-amber-600 hover:text-amber-700 hover:underline">Refresh values</button></div>';
-              html += '</div>';
-              panel.innerHTML = hasAny ? html : '<div class="p-6 text-center text-stone-500 text-sm">No nutrition data found</div><div class="p-2"><button type="button" data-refresh-nutrition class="text-xs text-amber-600 hover:text-amber-700 hover:underline">Refresh values</button></div>';
+              panel.innerHTML = buildNutritionPanelHtml(nut, data);
               panel.dataset.loaded = "1";
+              panel.removeAttribute("data-needs-fetch");
               card.dataset.itemNutrition = JSON.stringify(nut);
               card.dataset.itemNutritionSource = data.source || "";
             } catch (err) {
-              panel.innerHTML = '<div class="p-6 text-center text-red-600 text-sm">Failed to load</div>';
+              panel.innerHTML = '<div class="p-6 space-y-3"><div class="flex flex-col items-center gap-2 py-4 rounded-lg bg-stone-50 border border-stone-200/60"><span class="text-4xl opacity-50" aria-hidden="true">📊</span><p class="text-sm text-stone-500">Failed to load</p><button type="button" data-refresh-nutrition class="mt-1 px-3 py-1.5 rounded-lg text-xs font-medium text-stone-600 bg-white border border-stone-200 hover:bg-stone-50 transition-colors">Refresh values</button></div></div>';
             }
           });
 
@@ -384,6 +343,55 @@
               [a[i], a[j]] = [a[j], a[i]];
             }
             return a;
+          }
+
+          function buildNutritionPanelHtml(nut, data) {
+            const p = (nut.protein || 0), c = (nut.carbohydrate || 0), f = (nut.fat || 0);
+            const totalMacro = p + c + f;
+            const hasMacros = totalMacro > 0;
+            const pctP = hasMacros ? (p / totalMacro) * 100 : 33.3;
+            const pctC = hasMacros ? (c / totalMacro) * 100 : 33.3;
+            const pctF = hasMacros ? (f / totalMacro) * 100 : 33.3;
+            const conic = hasMacros
+              ? `conic-gradient(#ea580c 0% ${pctP}%, #d97706 ${pctP}% ${pctP + pctC}%, #059669 ${pctP + pctC}% 100%)`
+              : "conic-gradient(#e7e5e4 0% 100%)";
+            const energy = nut.energy_kcal != null ? nut.energy_kcal : null;
+            const hasAny = energy != null || hasMacros || (nut.fiber != null || nut.sugar != null || nut.sodium != null || nut.salt != null);
+            const extras = [
+              { icon: "🌿", label: "Fiber", val: nut.fiber, unit: "g" },
+              { icon: "🍬", label: "Sugar", val: nut.sugar, unit: "g" },
+              { icon: "🧂", label: "Sodium", val: nut.sodium, unit: "g" },
+              { icon: "🧂", label: "Salt", val: nut.salt, unit: "g" }
+            ].filter(x => x.val != null);
+            if (!hasAny) {
+              return '<div class="p-6 space-y-3"><div class="flex flex-col items-center gap-2 py-4 rounded-lg bg-stone-50 border border-stone-200/60"><span class="text-4xl opacity-50" aria-hidden="true">📊</span><p class="text-sm text-stone-500">No nutrition data found</p><button type="button" data-refresh-nutrition class="mt-1 px-3 py-1.5 rounded-lg text-xs font-medium text-stone-600 bg-white border border-stone-200 hover:bg-stone-50 transition-colors">Refresh values</button></div></div>';
+            }
+            let html = '<div class="p-5 space-y-4 bg-stone-50/50">';
+            html += '<div class="flex items-center gap-4">';
+            html += '<div class="shrink-0 w-20 h-20 rounded-full border-4 border-white shadow-md" style="background: ' + conic + '"></div>';
+            html += '<div class="flex-1 min-w-0 space-y-1">';
+            if (energy != null) html += '<div class="text-lg font-bold text-stone-800">' + escapeHtml(String(energy)) + ' <span class="text-sm font-normal text-stone-500">kcal</span></div>';
+            html += '<div class="flex flex-wrap gap-x-3 gap-y-0.5 text-xs">';
+            if (hasMacros) {
+              html += '<span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-orange-500"></span> Protein ' + escapeHtml(String(p)) + 'g</span>';
+              html += '<span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-amber-500"></span> Carbs ' + escapeHtml(String(c)) + 'g</span>';
+              html += '<span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald-600"></span> Fat ' + escapeHtml(String(f)) + 'g</span>';
+            } else {
+              html += '<span class="text-stone-500">Macros not available</span>';
+            }
+            html += '</div></div></div>';
+            if (extras.length) {
+              html += '<div class="flex flex-wrap gap-2">';
+              extras.forEach(x => {
+                html += '<div class="flex items-center gap-1.5 rounded-lg bg-white/80 px-3 py-1.5 text-xs shadow-sm border border-stone-100"><span>' + x.icon + '</span><span class="text-stone-600">' + escapeHtml(x.label) + '</span><span class="font-semibold text-stone-800">' + escapeHtml(String(x.val)) + x.unit + '</span></div>';
+              });
+              html += '</div>';
+            }
+            if (data && data.source) html += '<div class="pt-1 text-[10px] text-stone-400">Source: ' + escapeHtml(data.source === "openai_vision" ? "AI estimate" : data.source === "generic_estimate" ? "Rough estimate" : "Open Food Facts") + (data.confidence ? ' · ' + escapeHtml(data.confidence) + ' confidence' : '') + '</div>';
+            if (data && data.notes) html += '<div class="pt-0.5 text-[10px] text-stone-500 italic">' + escapeHtml(data.notes) + '</div>';
+            html += '<div class="pt-2"><button type="button" data-refresh-nutrition class="text-xs font-medium text-stone-600 hover:text-stone-800">Refresh values</button></div>';
+            html += '</div>';
+            return html;
           }
 
           let currentItems = [];
@@ -435,13 +443,26 @@
               const roleBadge = item.basket_role ? `<span class="text-xs px-2 py-0.5 rounded bg-amber-200 text-amber-800">${escapeHtml(item.basket_role)}</span>` : "";
               const itemDesc = (item.description || "").trim();
               const itemImg = (item.image_url && item.image_url.startsWith("http")) ? item.image_url : "";
-              const itemNut = item.nutriments ? JSON.stringify(item.nutriments) : "";
+              const itemNut = item.nutriments || {};
+              const nutFromMacros = [macros.protein, macros.carbohydrate, macros.fat].some(Boolean)
+                ? { protein: macros.protein, carbohydrate: macros.carbohydrate, fat: macros.fat }
+                : {};
+              const nut = Object.keys(itemNut).length > 0 ? itemNut : nutFromMacros;
+              const data = { source: item.nutrition_source || (Object.keys(nutFromMacros).length ? "estimate" : ""), notes: "" };
+              const initialPanelHtml = Object.keys(nut).length > 0
+                ? buildNutritionPanelHtml(nut, data)
+                : '<div class="p-6 text-center text-amber-600 text-sm">Loading…</div>';
+              const itemNutJson = (item.nutriments || Object.keys(nut).length ? nut : null) ? JSON.stringify(item.nutriments || nut) : "";
               const itemNutSource = item.nutrition_source || "";
+              const needsFetch = Object.keys(nut).length === 0 ? "1" : "";
               return `
-              <div class="shrink-0 w-72 snap-center rounded-2xl overflow-hidden bg-white border border-stone-200/80 shadow-md hover:shadow-lg transition-shadow flex flex-col" data-item-name="${escapeHtml(item.name)}" data-item-restaurant="${escapeHtml(item.restaurant || '')}" data-item-description="${escapeHtml(itemDesc)}" data-item-image-url="${escapeHtml(itemImg)}" data-item-nutrition="${escapeHtml(itemNut)}" data-item-nutrition-source="${escapeHtml(itemNutSource)}">
+              <div class="shrink-0 w-72 snap-center rounded-2xl overflow-hidden bg-white border border-stone-200/80 shadow-md hover:shadow-lg transition-shadow flex flex-col relative" data-item-name="${escapeHtml(item.name)}" data-item-restaurant="${escapeHtml(item.restaurant || '')}" data-item-description="${escapeHtml(itemDesc)}" data-item-image-url="${escapeHtml(itemImg)}" data-item-nutrition="${escapeHtml(itemNutJson)}" data-item-nutrition-source="${escapeHtml(itemNutSource)}">
                 <div class="block cursor-default">
-                  <div class="aspect-[7/4] bg-stone-100 overflow-hidden">
+                  <div class="aspect-[7/4] bg-stone-100 overflow-hidden relative">
                     <img src="${escapeHtml(primaryImg)}" alt="${escapeHtml(item.name)}" class="w-full h-full object-cover" loading="lazy" data-fallback="${escapeHtml(defaultPlaceholder)}" onerror="this.onerror=null;this.src=this.dataset.fallback"/>
+                    <button type="button" data-nutrition-trigger class="absolute top-2 right-2 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-white/90 backdrop-blur-sm text-stone-700 border border-stone-200/80 shadow-sm hover:bg-white transition-colors">
+                      📊 Nutrition
+                    </button>
                   </div>
                   <div class="p-4 flex flex-col flex-1">
                     <div class="flex items-center gap-2 mb-1">
@@ -461,127 +482,69 @@
                     </div>
                   </div>
                 </div>
-                <div class="px-4 pb-4 pt-0 border-t border-stone-100">
-                  <button type="button" data-view-nutrition class="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-amber-100 text-amber-800 hover:bg-amber-200 border border-amber-200/80 transition-colors">
-                    <span data-nutrition-label>View nutrition</span>
-                    <span data-nutrition-chevron aria-hidden="true">▾</span>
-                  </button>
-                  <div data-nutrition-panel class="hidden mt-2 rounded-xl overflow-hidden border border-amber-100 bg-gradient-to-br from-amber-50/80 to-stone-50/80 shadow-inner"></div>
+                <div data-nutrition-overlay class="absolute inset-0 z-10 rounded-2xl overflow-auto bg-white/98 backdrop-blur-sm shadow-xl hidden flex flex-col">
+                  <div class="sticky top-0 z-20 flex items-center justify-between p-3 bg-white/90 backdrop-blur-sm border-b border-stone-100">
+                    <span class="text-sm font-semibold text-stone-700">Nutrition</span>
+                    <button type="button" data-nutrition-close class="p-2 rounded-lg text-stone-500 hover:text-stone-700 hover:bg-stone-100 transition-colors" aria-label="Close">
+                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                  </div>
+                  <div data-nutrition-panel class="flex-1 p-4 overflow-auto" data-needs-fetch="${escapeHtml(needsFetch)}">${initialPanelHtml}</div>
                 </div>
               </div>
             `}).join("");
             resultsEl?.classList.remove("hidden");
 
-            listEl.querySelectorAll("[data-view-nutrition]").forEach(btn => {
-              btn.addEventListener("click", async (e) => {
+            listEl.querySelectorAll("[data-nutrition-trigger]").forEach(btn => {
+              btn.addEventListener("click", (e) => {
                 e.preventDefault();
+                e.stopPropagation();
                 const card = btn.closest("[data-item-name]");
-                if (!card) return;
-                const name = card.dataset.itemName || "";
-                const panel = card.querySelector("[data-nutrition-panel]");
-                const label = card.querySelector("[data-nutrition-label]");
-                const chevron = card.querySelector("[data-nutrition-chevron]");
-                if (panel.classList.contains("hidden")) {
-                  listEl.querySelectorAll("[data-nutrition-panel]").forEach(p => { p.classList.add("hidden"); });
-                  listEl.querySelectorAll("[data-nutrition-label]").forEach(l => { l.textContent = "View nutrition"; });
-                  listEl.querySelectorAll("[data-nutrition-chevron]").forEach(c => { c.textContent = "▾"; });
-                  const forceRefresh = panel.dataset.forceRefresh === "1";
-                  let nut = {};
-                  let data = { source: "", notes: "" };
-                  const embeddedNut = card.dataset.itemNutrition;
-                  if (embeddedNut && !forceRefresh) {
-                    try {
-                      nut = JSON.parse(embeddedNut) || {};
-                      data.source = card.dataset.itemNutritionSource || "openfoodfacts";
-                    } catch (_) {}
-                  }
-                  const hasEmbedded = Object.keys(nut).length > 0;
-                  if (!hasEmbedded || forceRefresh) {
-                    if (forceRefresh) delete panel.dataset.forceRefresh;
-                    if (!panel.dataset.loaded || forceRefresh) {
-                      panel.innerHTML = '<div class="p-6 text-center text-amber-600 text-sm">Loading…</div>';
-                      try {
-                        const desc = (card.dataset.itemDescription || "").trim();
-                        const imgUrl = (card.dataset.itemImageUrl || "").trim();
-                        const refreshSuffix = forceRefresh ? "&refresh=1" : "";
-                        const refreshPrefix = forceRefresh ? "?refresh=1" : "";
-                        let res;
-                        if (imgUrl || desc) {
-                          res = await fetch("/nutrition" + refreshPrefix, {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json", "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]')?.content || "", "Accept": "application/json" },
-                            body: JSON.stringify({ q: name, description: desc, image_url: imgUrl, refresh: forceRefresh })
-                          });
-                        } else {
-                          res = await fetch("/nutrition?q=" + encodeURIComponent(name) + refreshSuffix);
-                        }
-                        data = await res.json();
-                        if (data.error) {
-                          panel.innerHTML = '<div class="p-6 text-center text-red-600 text-sm">' + escapeHtml(data.error) + '</div>';
-                          return;
-                        }
-                        nut = data.nutriments || {};
-                      } catch (err) {
-                        panel.innerHTML = '<div class="p-6 text-center text-red-600 text-sm">Failed to load</div>';
-                        return;
-                      }
-                    }
-                  }
-                  const p = (nut.protein || 0), c = (nut.carbohydrate || 0), f = (nut.fat || 0);
-                  const totalMacro = p + c + f;
-                  const hasMacros = totalMacro > 0;
-                  const pctP = hasMacros ? (p / totalMacro) * 100 : 33.3;
-                  const pctC = hasMacros ? (c / totalMacro) * 100 : 33.3;
-                  const pctF = hasMacros ? (f / totalMacro) * 100 : 33.3;
-                  const conic = hasMacros
-                    ? `conic-gradient(#ea580c 0% ${pctP}%, #d97706 ${pctP}% ${pctP + pctC}%, #059669 ${pctP + pctC}% 100%)`
-                    : "conic-gradient(#e7e5e4 0% 100%)";
-                  const energy = nut.energy_kcal != null ? nut.energy_kcal : null;
-                  const hasAny = energy != null || hasMacros || (nut.fiber != null || nut.sugar != null || nut.sodium != null || nut.salt != null);
-                  const extras = [
-                    { icon: "🌿", label: "Fiber", val: nut.fiber, unit: "g" },
-                    { icon: "🍬", label: "Sugar", val: nut.sugar, unit: "g" },
-                    { icon: "🧂", label: "Sodium", val: nut.sodium, unit: "g" },
-                    { icon: "🧂", label: "Salt", val: nut.salt, unit: "g" }
-                  ].filter(x => x.val != null);
-                  let html = '<div class="p-5 space-y-4">';
-                  html += '<div class="flex items-center gap-4">';
-                  html += '<div class="shrink-0 w-20 h-20 rounded-full border-4 border-white shadow-md" style="background: ' + conic + '"></div>';
-                  html += '<div class="flex-1 min-w-0 space-y-1">';
-                  if (energy != null) html += '<div class="text-lg font-bold text-stone-800">' + escapeHtml(String(energy)) + ' <span class="text-sm font-normal text-stone-500">kcal</span></div>';
-                  html += '<div class="flex flex-wrap gap-x-3 gap-y-0.5 text-xs">';
-                  if (hasMacros) {
-                    html += '<span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-orange-500"></span> Protein ' + escapeHtml(String(p)) + 'g</span>';
-                    html += '<span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-amber-500"></span> Carbs ' + escapeHtml(String(c)) + 'g</span>';
-                    html += '<span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald-600"></span> Fat ' + escapeHtml(String(f)) + 'g</span>';
-                  } else {
-                    html += '<span class="text-stone-500">Macros not available</span>';
-                  }
-                  html += '</div></div></div>';
-                  if (extras.length) {
-                    html += '<div class="flex flex-wrap gap-2">';
-                    extras.forEach(x => {
-                      html += '<div class="flex items-center gap-1.5 rounded-lg bg-white/80 px-3 py-1.5 text-xs shadow-sm border border-stone-100"><span>' + x.icon + '</span><span class="text-stone-600">' + escapeHtml(x.label) + '</span><span class="font-semibold text-stone-800">' + escapeHtml(String(x.val)) + x.unit + '</span></div>';
-                    });
-                    html += '</div>';
-                  }
-                  if (data.source) html += '<div class="pt-1 text-[10px] text-stone-400">Source: ' + escapeHtml(data.source === "openai_vision" ? "AI estimate" : data.source === "generic_estimate" ? "Rough estimate" : "Open Food Facts") + (data.confidence ? ' · ' + escapeHtml(data.confidence) + ' confidence' : '') + '</div>';
-                  if (data.notes) html += '<div class="pt-0.5 text-[10px] text-stone-500 italic">' + escapeHtml(data.notes) + '</div>';
-                  html += '<div class="pt-2"><button type="button" data-refresh-nutrition class="text-xs text-amber-600 hover:text-amber-700 hover:underline">Refresh values</button></div>';
-                  html += '</div>';
-                  panel.innerHTML = hasAny ? html : '<div class="p-6 text-center text-stone-500 text-sm">No nutrition data found</div><div class="p-2"><button type="button" data-refresh-nutrition class="text-xs text-amber-600 hover:text-amber-700 hover:underline">Refresh values</button></div>';
-                  panel.dataset.loaded = "1";
-                  card.dataset.itemNutrition = JSON.stringify(nut);
-                  card.dataset.itemNutritionSource = data.source || "";
-                  panel.classList.remove("hidden");
-                  if (label) label.textContent = "Hide nutrition";
-                  if (chevron) chevron.textContent = "▴";
-                } else {
-                  panel.classList.add("hidden");
-                  if (label) label.textContent = "View nutrition";
-                  if (chevron) chevron.textContent = "▾";
-                }
+                const overlay = card?.querySelector("[data-nutrition-overlay]");
+                if (overlay) overlay.classList.toggle("hidden");
               });
+            });
+            listEl.querySelectorAll("[data-nutrition-close]").forEach(btn => {
+              btn.addEventListener("click", (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const overlay = btn.closest("[data-nutrition-overlay]");
+                if (overlay) overlay.classList.add("hidden");
+              });
+            });
+
+            listEl.querySelectorAll("[data-nutrition-panel][data-needs-fetch='1']").forEach(async (panel) => {
+              const card = panel.closest("[data-item-name]");
+              if (!card) return;
+              const name = card.dataset.itemName || "";
+              try {
+                const desc = (card.dataset.itemDescription || "").trim();
+                const imgUrl = (card.dataset.itemImageUrl || "").trim();
+                let res;
+                if (imgUrl || desc) {
+                  res = await fetch("/nutrition", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]')?.content || "", "Accept": "application/json" },
+                    body: JSON.stringify({ q: name, description: desc, image_url: imgUrl })
+                  });
+                } else {
+                  res = await fetch("/nutrition?q=" + encodeURIComponent(name));
+                }
+                const data = await res.json();
+                if (data.error) {
+                  panel.innerHTML = '<div class="p-6 space-y-3"><div class="flex flex-col items-center gap-2 py-4 rounded-lg bg-stone-50 border border-stone-200/60"><span class="text-4xl opacity-50" aria-hidden="true">📊</span><p class="text-sm text-stone-500">' + escapeHtml(data.error) + '</p><button type="button" data-refresh-nutrition class="mt-1 px-3 py-1.5 rounded-lg text-xs font-medium text-stone-600 bg-white border border-stone-200 hover:bg-stone-50 transition-colors">Refresh values</button></div></div>';
+                  return;
+                }
+                const nut = data.nutriments || {};
+                panel.innerHTML = buildNutritionPanelHtml(nut, data);
+                panel.dataset.loaded = "1";
+                panel.removeAttribute("data-needs-fetch");
+                card.dataset.itemNutrition = JSON.stringify(nut);
+                card.dataset.itemNutritionSource = data.source || "";
+              } catch (err) {
+                panel.innerHTML = '<div class="p-6 space-y-3"><div class="flex flex-col items-center gap-2 py-4 rounded-lg bg-stone-50 border border-stone-200/60"><span class="text-4xl opacity-50" aria-hidden="true">📊</span><p class="text-sm text-stone-500">Failed to load</p><button type="button" data-refresh-nutrition class="mt-1 px-3 py-1.5 rounded-lg text-xs font-medium text-stone-600 bg-white border border-stone-200 hover:bg-stone-50 transition-colors">Refresh values</button></div></div>';
+                panel.removeAttribute("data-needs-fetch");
+              }
             });
           }
 
