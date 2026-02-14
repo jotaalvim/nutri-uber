@@ -4,3 +4,5 @@ playwright
 flask
 flask-cors
 gunicorn
+openai
+python-dotenv

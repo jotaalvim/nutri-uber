@@ -10,18 +10,35 @@ import os
 import threading
 from pathlib import Path
 
+from dotenv import load_dotenv
+
+load_dotenv(Path(__file__).parent / ".env")
+
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 
-from cache import get as cache_get, set as cache_set, get_grocery, set_grocery, list_grocery_baskets
+from cache import get as cache_get, set as cache_set, get_grocery, set_grocery, get_nutrition, set_nutrition, list_grocery_baskets
 from uber_eats_integration import add_basket_to_cart
 from food_finder import (
     find_food_for_patient,
     find_grocery_basket_for_patient,
     fetch_nutrition_detail,
     fetch_uber_eats_images_for_items,
+    load_all_menus_items,
+    load_continente_grocery_from_all_menus,
     load_patient_diet,
+    _is_drink,
 )
+
+
+def _filter_drinks(items: list) -> list:
+    """Remove drink items from list."""
+    return [
+        i for i in items
+        if i.get("basket_role") != "drink"
+        and not _is_drink(i.get("name") or "", i.get("description") or "")
+    ]
+from calorie_estimator import estimate_calories_with_llm
 
 app = Flask(__name__)
 CORS(app)
@@ -46,8 +63,6 @@ SEED_BASKETS = [
              "macronutrient_distribution_in_grams": {"protein": 1.5, "carbohydrate": 4, "fat": 0.3}},
             {"name": "Maçã", "price": "€0.80", "basket_role": "vegetable_or_fruit",
              "macronutrient_distribution_in_grams": {"protein": 0.3, "carbohydrate": 14, "fat": 0.2}},
-            {"name": "Água 500ml", "price": "€1.20", "basket_role": "drink",
-             "macronutrient_distribution_in_grams": {"protein": 0, "carbohydrate": 0, "fat": 0}},
         ],
     },
     {
@@ -62,8 +77,6 @@ SEED_BASKETS = [
              "macronutrient_distribution_in_grams": {"protein": 11, "carbohydrate": 10, "fat": 5}},
             {"name": "Abacate", "price": "€2.00", "basket_role": "vegetable_or_fruit",
              "macronutrient_distribution_in_grams": {"protein": 2, "carbohydrate": 9, "fat": 15}},
-            {"name": "Chá verde", "price": "€2.50", "basket_role": "drink",
-             "macronutrient_distribution_in_grams": {"protein": 0, "carbohydrate": 0, "fat": 0}},
         ],
     },
 ]
@@ -161,7 +174,7 @@ def _resolve_patient_and_params():
 def find_food():
     """
     Find healthy food that fits the patient's dietary constraints.
-    Cache hit = instant. Cache miss = ~40s scrape.
+    Cache hit = instant. Cache miss = scrape or fallback to all_menus.
     """
     try:
         patient, patient_id, city, max_restaurants = _resolve_patient_and_params()
@@ -171,20 +184,31 @@ def find_food():
         if cached:
             return jsonify(cached)
 
-        results = find_food_for_patient(
-            patient,
-            city_slug=city,
-            max_restaurants=max_restaurants,
-            headless=True,
-        )
-        fetch_uber_eats_images_for_items(results, headless=True)  # concurrent, non-blocking
+        results = []
+        try:
+            results = find_food_for_patient(
+                patient,
+                city_slug=city,
+                max_restaurants=max_restaurants,
+                headless=True,
+            )
+        except Exception:
+            pass  # Fall through to fallback
+
+        if not results:
+            # Fallback: instant items from all_menus.json (no scraping)
+            results = load_all_menus_items(max_items=40)
+
+        results = _filter_drinks(results)
+        if results:
+            fetch_uber_eats_images_for_items(results, headless=True)  # concurrent, non-blocking
+            cache_set(patient_id, city, patient.get("patient_name", "Unknown"), results)
+
         payload = {
             "patient": patient.get("patient_name", "Unknown"),
             "count": len(results),
             "items": results,
         }
-        if results:
-            cache_set(patient_id, city, payload["patient"], results)
         return jsonify(payload)
     except FileNotFoundError as e:
         return jsonify({"error": str(e)}), 404
@@ -194,7 +218,7 @@ def find_food():
 
 @app.route("/cached_grocery_basket", methods=["GET"])
 def cached_grocery_basket():
-    """Return cached grocery basket if available. No scraping."""
+    """Return cached grocery basket if available. Fallback to all_menus when cold."""
     try:
         patient_id = request.args.get("patient_id")
         city = request.args.get("city", "braga-norte")
@@ -202,10 +226,34 @@ def cached_grocery_basket():
             return jsonify({"error": "patient_id required"}), 400
 
         cached = get_grocery(patient_id, city)
-        if not cached:
-            return jsonify({"error": "not cached"}), 404
+        if cached:
+            cached["items"] = _filter_drinks(cached.get("items") or [])
+            cached["count"] = len(cached["items"])
+            return jsonify(cached)
 
-        return jsonify(cached)
+        # Fallback: items from all_menus.json (instant, no scraping)
+        items = _filter_drinks(load_continente_grocery_from_all_menus(max_items=20))
+        if items:
+            store_url = items[0].get("store_url", "") if items else ""
+            return jsonify({
+                "store": "Continente Bom Dia Braga",
+                "store_url": store_url,
+                "items": items,
+                "count": len(items),
+                "total_macros": {},
+                "from_cache": False,
+            })
+
+        # Last resort: seed basket
+        template = SEED_BASKETS[0]
+        return jsonify({
+            "store": template["store"],
+            "store_url": template["store_url"],
+            "items": template["items"],
+            "count": len(template["items"]),
+            "total_macros": {},
+            "from_cache": False,
+        })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -213,8 +261,8 @@ def cached_grocery_basket():
 @app.route("/cached_food", methods=["GET"])
 def cached_food():
     """
-    Return cached food for a patient if available. No scraping.
-    Used to show results immediately on page load when cache is warm.
+    Return cached food for a patient if available. Fallback to all_menus when cold.
+    Used to show results immediately on page load.
     """
     try:
         patient_id = request.args.get("patient_id")
@@ -223,10 +271,19 @@ def cached_food():
             return jsonify({"error": "patient_id required"}), 400
 
         cached = cache_get(patient_id, city)
-        if not cached:
-            return jsonify({"error": "not cached"}), 404
+        if cached:
+            cached["items"] = _filter_drinks(cached.get("items") or [])
+            cached["count"] = len(cached["items"])
+            return jsonify(cached)
 
-        return jsonify(cached)
+        # Fallback: items from all_menus.json (instant, no scraping)
+        items = _filter_drinks(load_all_menus_items(max_items=40))
+        return jsonify({
+            "patient": "Unknown",
+            "count": len(items),
+            "items": items,
+            "from_cache": False,
+        })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -253,8 +310,28 @@ def warm_cache():
 
         # Already cached?
         cached = cache_get(patient_id, city)
-        if cached:
-            return jsonify({"status": "cached", "count": cached["count"]})
+        grocery = get_grocery(patient_id, city) if patient_id else None
+
+        def _warm_nutrition():
+            items = list((cached.get("items") or [])[:6]) + list((grocery.get("items") or [])[:4]) if cached or grocery else []
+            for item in items[:10]:
+                name = (item.get("name") or "").strip()
+                desc = item.get("description") or ""
+                img = item.get("image_url") or ""
+                if not name or get_nutrition(name, desc, img):
+                    continue
+                try:
+                    d = estimate_calories_with_llm(name, desc, img) if (img or desc) else None
+                    if not d or not d.get("nutriments"):
+                        d = fetch_nutrition_detail(name)
+                    if d and d.get("nutriments"):
+                        set_nutrition(name, d, desc, img)
+                except Exception:
+                    pass
+
+        if cached or grocery:
+            threading.Thread(target=_warm_nutrition, daemon=True).start()
+            return jsonify({"status": "cached", "count": (cached or {}).get("count", 0) or (grocery or {}).get("count", 0)})
 
         def _warm():
             try:
@@ -289,20 +366,43 @@ def grocery_basket():
         if cached:
             return jsonify(cached)
 
-        result = find_grocery_basket_for_patient(
-            patient,
-            city_slug=city,
-            max_stores=2,
-            headless=True,
-        )
-        if result.get("items"):
-            fetch_uber_eats_images_for_items(result["items"], headless=True)  # concurrent
-        # Fallback: when scrape returns empty, use seeded basket
+        result = {}
+        try:
+            result = find_grocery_basket_for_patient(
+                patient,
+                city_slug=city,
+                max_stores=2,
+                headless=True,
+            )
+        except Exception:
+            pass  # Fall through to fallback
+
         if not result.get("items"):
-            cached = get_grocery(patient_id, city)
-            if cached and cached.get("items"):
-                result = cached
+            # Fallback: items from all_menus.json or seed basket
+            items = _filter_drinks(load_continente_grocery_from_all_menus(max_items=20))
+            if items:
+                store_url = items[0].get("store_url", "") if items else ""
+                result = {
+                    "store": "Continente Bom Dia Braga",
+                    "store_url": store_url,
+                    "items": items,
+                    "count": len(items),
+                    "total_macros": {},
+                }
+            else:
+                template = SEED_BASKETS[0]
+                result = {
+                    "store": template["store"],
+                    "store_url": template["store_url"],
+                    "items": template["items"],
+                    "count": len(template["items"]),
+                    "total_macros": {},
+                }
+
         if result.get("items"):
+            result["items"] = _filter_drinks(result["items"])
+            result["count"] = len(result["items"])
+            fetch_uber_eats_images_for_items(result["items"], headless=True)  # concurrent
             set_grocery(patient_id, city, result)
         return jsonify(result)
     except FileNotFoundError as e:
@@ -355,19 +455,76 @@ def baskets():
         return jsonify({"error": str(e)}), 500
 
 
-@app.route("/nutrition", methods=["GET"])
+def _generic_nutrition_estimate(food_name: str) -> dict | None:
+    """Fallback: rough estimates for common food types when OFF/LLM fail."""
+    name_lower = (food_name or "").lower()
+    # Typical per-portion estimates (kcal, protein, carb, fat)
+    estimates = [
+        (["salada", "salad"], {"energy_kcal": 120, "protein": 5, "carbohydrate": 12, "fat": 6}),
+        (["sandes", "sandwich", "sanduíche", "tosta"], {"energy_kcal": 350, "protein": 15, "carbohydrate": 38, "fat": 14}),
+        (["frango", "chicken", "peito"], {"energy_kcal": 165, "protein": 31, "carbohydrate": 0, "fat": 3.6}),
+        (["arroz", "rice"], {"energy_kcal": 130, "protein": 2.6, "carbohydrate": 28, "fat": 0.3}),
+        (["massa", "pasta", "espaguete"], {"energy_kcal": 220, "protein": 8, "carbohydrate": 43, "fat": 1}),
+        (["atum", "tuna"], {"energy_kcal": 130, "protein": 28, "carbohydrate": 0, "fat": 1}),
+        (["queijo", "cheese"], {"energy_kcal": 110, "protein": 7, "carbohydrate": 0.5, "fat": 9}),
+        (["ovos", "egg", "ovo"], {"energy_kcal": 155, "protein": 13, "carbohydrate": 1, "fat": 11}),
+        (["sopa", "soup"], {"energy_kcal": 80, "protein": 4, "carbohydrate": 10, "fat": 2}),
+        (["iogurte", "yogurt"], {"energy_kcal": 100, "protein": 6, "carbohydrate": 12, "fat": 2.5}),
+        (["bowl", "house"], {"energy_kcal": 400, "protein": 20, "carbohydrate": 45, "fat": 15}),
+    ]
+    for keywords, nut in estimates:
+        if any(kw in name_lower for kw in keywords):
+            return {
+                "product_name": food_name,
+                "nutriments": nut,
+                "source": "generic_estimate",
+                "notes": "Rough estimate; use Refresh for more accurate data",
+            }
+    return None
+
+
+@app.route("/nutrition", methods=["GET", "POST"])
 def nutrition():
     """
-    Get detailed nutrition from Open Food Facts for a food name.
-    GET /nutrition?q=chicken+salad
+    Estimate calories using OpenAI Vision (image + description) or fallback to Open Food Facts.
+    Cached for 7 days - cache hit returns instantly.
+    GET  /nutrition?q=chicken+salad
+    POST /nutrition with JSON: { "q": "food name", "description": "...", "image_url": "https://..." }
     """
     try:
-        q = request.args.get("q", "").strip()
+        if request.method == "POST":
+            data = request.get_json() or {}
+            q = (data.get("q") or data.get("name") or "").strip()
+            description = (data.get("description") or "").strip()
+            image_url = (data.get("image_url") or "").strip() or None
+        else:
+            q = request.args.get("q", "").strip()
+            description = request.args.get("description", "").strip()
+            image_url = request.args.get("image_url", "").strip() or None
+
         if not q:
-            return jsonify({"error": "q (query) required"}), 400
-        detail = fetch_nutrition_detail(q)
+            return jsonify({"error": "q (food name) required"}), 400
+
+        force_refresh = request.args.get("refresh") == "1" or (request.get_json() or {}).get("refresh") is True
+        cached = None if force_refresh else get_nutrition(q, description, image_url or "")
+        if cached:
+            return jsonify(cached)
+
+        detail = None
+        if image_url or description:
+            detail = estimate_calories_with_llm(
+                food_name=q,
+                description=description,
+                image_url=image_url,
+            )
+        if not detail or not detail.get("nutriments"):
+            detail = fetch_nutrition_detail(q)
+        if not detail or not detail.get("nutriments"):
+            detail = _generic_nutrition_estimate(q)
         if not detail:
-            return jsonify({"product_name": None, "nutriments": {}, "source": "openfoodfacts"})
+            return jsonify({"product_name": q, "nutriments": {}, "source": "openfoodfacts"})
+
+        set_nutrition(q, detail, description, image_url or "")
         return jsonify(detail)
     except Exception as e:
         return jsonify({"error": str(e)}), 500

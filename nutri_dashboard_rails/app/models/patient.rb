@@ -10,7 +10,82 @@ class Patient < ApplicationRecord
   end
 
   def food_diary
-    (patient_infos || {}).dig("food_diary_history_and_obs") || []
+    infos = patient_infos || {}
+    infos["food_diary_history_and_obs"] ||
+      infos.dig("dietary_history", "food_diary_history_and_obs") || []
+  end
+
+  def last_order_out
+    (patient_infos || {}).dig("last_order_out")
+  end
+
+  def order_out_consumed_for_date(date)
+    d = date.respond_to?(:strftime) ? date.strftime("%Y-%m-%d") : date.to_s
+    (patient_infos || {}).dig("order_out_consumed_by_date", d) || {}
+  end
+
+  def order_out_consumed_today
+    order_out_consumed_for_date(Time.zone.today)
+  end
+
+  def effective_dee_goal
+    consumed = order_out_consumed_today
+    return dee_goal if consumed.blank? || consumed["energy_kcal"].to_f.zero?
+
+    base = dee_goal.to_f
+    remaining = base - consumed["energy_kcal"].to_f
+    [remaining.round, 0].max
+  end
+
+  def effective_protein_grams
+    consumed = order_out_consumed_today
+    return protein_grams.to_f if consumed.blank? || consumed["protein"].to_f.zero?
+
+    base = protein_grams.to_f
+    remaining = base - consumed["protein"].to_f
+    [remaining.round(1), 0].max
+  end
+
+  def effective_carbohydrate_grams
+    consumed = order_out_consumed_today
+    return carbohydrate_grams.to_f if consumed.blank? || consumed["carbohydrate"].to_f.zero?
+
+    base = carbohydrate_grams.to_f
+    remaining = base - consumed["carbohydrate"].to_f
+    [remaining.round(1), 0].max
+  end
+
+  def effective_fat_grams
+    consumed = order_out_consumed_today
+    return fat_grams.to_f if consumed.blank? || consumed["fat"].to_f.zero?
+
+    base = fat_grams.to_f
+    remaining = base - consumed["fat"].to_f
+    [remaining.round(1), 0].max
+  end
+
+  def effective_fiber_grams
+    consumed = order_out_consumed_today
+    return fiber_grams.to_f if consumed.blank? || consumed["fiber"].to_f.zero?
+
+    base = fiber_grams.to_f
+    remaining = base - consumed["fiber"].to_f
+    [remaining.round(1), 0].max
+  end
+
+  def ordered_out_today?
+    last_order_out.present? && last_order_out.to_s == Time.zone.today.strftime("%Y-%m-%d")
+  end
+
+  def order_out_entries
+    consumed_by_date = (patient_infos || {}).dig("order_out_consumed_by_date") || {}
+    return [] if consumed_by_date.blank?
+
+    diary_by_date = food_diary.index_by { |e| e["date"].to_s }
+    consumed_by_date.keys.sort.reverse.map do |date|
+      entry = diary_by_date[date] || { "date" => date, "meals" => [], "observations" => "Ordered out" }
+      entry.merge("_consumed" => consumed_by_date[date])
+    end
   end
 
   def safe_get(hash, keys)

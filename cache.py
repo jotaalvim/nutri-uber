@@ -63,6 +63,42 @@ def set_grocery(patient_id: str | int | None, city: str, data: dict) -> None:
     path.write_text(json.dumps(data, ensure_ascii=False, indent=0), encoding="utf-8")
 
 
+NUTRITION_CACHE_DIR = Path(__file__).parent / ".cache" / "nutrition"
+NUTRITION_TTL_HOURS = 168  # 7 days
+
+
+def _nutrition_key(name: str, description: str = "", image_url: str = "") -> str:
+    """Cache key for nutrition: name + description snippet + image URL."""
+    key = f"{name}||{description[:200]}||{image_url or ''}"
+    return hashlib.sha256(key.encode()).hexdigest()[:32]
+
+
+def get_nutrition(name: str, description: str = "", image_url: str = "") -> dict | None:
+    """Return cached nutrition if valid, else None."""
+    NUTRITION_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    path = NUTRITION_CACHE_DIR / f"{_nutrition_key(name, description, image_url)}.json"
+    if not path.exists():
+        return None
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        cached_at = data.get("cached_at", 0)
+        if time.time() - cached_at > NUTRITION_TTL_HOURS * 3600:
+            path.unlink(missing_ok=True)
+            return None
+        return data
+    except Exception:
+        path.unlink(missing_ok=True)
+        return None
+
+
+def set_nutrition(name: str, data: dict, description: str = "", image_url: str = "") -> None:
+    """Store nutrition result in cache."""
+    NUTRITION_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    path = NUTRITION_CACHE_DIR / f"{_nutrition_key(name, description, image_url)}.json"
+    data = {**data, "cached_at": time.time()}
+    path.write_text(json.dumps(data, ensure_ascii=False, indent=0), encoding="utf-8")
+
+
 def list_grocery_baskets() -> list[dict]:
     """List all cached grocery baskets. Returns summary of each basket."""
     CACHE_DIR.mkdir(parents=True, exist_ok=True)

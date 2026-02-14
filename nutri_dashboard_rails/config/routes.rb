@@ -19,5 +19,5 @@ Rails.application.routes.draw do
   get "grocery_basket", to: "dashboard#grocery_basket", as: :grocery_basket
   post "add_to_food_log", to: "dashboard#add_to_food_log", as: :add_to_food_log
   post "add_basket_to_cart", to: "dashboard#add_basket_to_cart", as: :add_basket_to_cart
-  get "nutrition", to: "dashboard#nutrition", as: :nutrition
+  match "nutrition", to: "dashboard#nutrition", as: :nutrition, via: [:get, :post]
 end
