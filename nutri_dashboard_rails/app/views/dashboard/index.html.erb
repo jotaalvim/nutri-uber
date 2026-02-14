@@ -165,12 +165,13 @@
         data-find-food-trigger
         class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium text-sm bg-emerald-600 text-white hover:bg-emerald-700 transition-colors shadow-md disabled:opacity-50 disabled:cursor-not-allowed">
         <span data-find-food-spinner class="hidden">⏳</span>
+        <span data-find-food-label>Refresh</span>
       </button>
       <div data-find-food-results class="mt-6 <%= @initial_food_items.any? ? '' : 'hidden' %>">
         <div class="flex flex-wrap items-center gap-3 mb-4">
           <p class="text-sm font-medium text-stone-700" data-find-food-count></p>
         </div>
-        <div data-find-food-list class="flex gap-4 overflow-x-auto pb-4 -mx-1 scroll-smooth snap-x snap-mandatory" style="scrollbar-width: thin;"></div>
+        <div data-find-food-list class="flex items-stretch gap-4 overflow-x-auto pb-4 -mx-1 scroll-smooth snap-x snap-mandatory" style="scrollbar-width: thin;"></div>
       </div>
       <div data-find-food-error class="mt-4 hidden text-sm text-red-600"></div>
     </section>
@@ -428,10 +429,10 @@
               const emoji = roleEmoji[it.basket_role] || "🥗";
               return "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='280' height='160'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%23fef3c7'/%3E%3Cstop offset='100%25' stop-color='%23fde68a'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='280' height='160' fill='url(%23g)'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-size='48'%3E" + encodeURIComponent(emoji) + "%3C/text%3E%3C/svg%3E";
             }
-            const defaultPlaceholder = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='280' height='160'%3E%3Crect width='280' height='160' fill='%23f5f5f4'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%23a8a29e' font-size='14'%3E🥗%3C/text%3E%3C/svg%3E";
+            const defaultPlaceholder = placeholderForItem({});
             listEl.innerHTML = items.map((item, idx) => {
               const hasImg = !!(item.image_url && item.image_url.startsWith("http"));
-              const primaryImg = hasImg ? item.image_url : (item.basket_role ? placeholderForItem(item) : defaultPlaceholder);
+              const primaryImg = hasImg ? item.image_url : placeholderForItem(item);
               const macros = item.macronutrient_distribution_in_grams || {};
               const macroStr = [macros.protein, macros.carbohydrate, macros.fat].some(Boolean)
                 ? `P ${macros.protein || "—"}g · C ${macros.carbohydrate || "—"}g · F ${macros.fat || "—"}g`
@@ -455,27 +456,28 @@
               const itemNutJson = (item.nutriments || Object.keys(nut).length ? nut : null) ? JSON.stringify(item.nutriments || nut) : "";
               const itemNutSource = item.nutrition_source || "";
               const needsFetch = Object.keys(nut).length === 0 ? "1" : "";
+              const shortDesc = (item.description || "").trim().slice(0, 120);
               return `
-              <div class="shrink-0 w-72 snap-center rounded-2xl overflow-hidden bg-white border border-stone-200/80 shadow-md hover:shadow-lg transition-shadow flex flex-col relative" data-item-name="${escapeHtml(item.name)}" data-item-restaurant="${escapeHtml(item.restaurant || '')}" data-item-description="${escapeHtml(itemDesc)}" data-item-image-url="${escapeHtml(itemImg)}" data-item-nutrition="${escapeHtml(itemNutJson)}" data-item-nutrition-source="${escapeHtml(itemNutSource)}">
-                <div class="block cursor-default">
-                  <div class="aspect-[7/4] bg-stone-100 overflow-hidden relative">
+              <div class="shrink-0 w-72 snap-center rounded-2xl overflow-hidden bg-white border border-stone-200/80 shadow-md hover:shadow-lg transition-shadow flex flex-col relative h-full min-h-[380px]" data-item-name="${escapeHtml(item.name)}" data-item-restaurant="${escapeHtml(item.restaurant || '')}" data-item-description="${escapeHtml(itemDesc)}" data-item-image-url="${escapeHtml(itemImg)}" data-item-nutrition="${escapeHtml(itemNutJson)}" data-item-nutrition-source="${escapeHtml(itemNutSource)}">
+                <div class="block cursor-default flex flex-col flex-1 min-h-0">
+                  <div class="aspect-[7/4] shrink-0 bg-stone-100 overflow-hidden relative">
                     <img src="${escapeHtml(primaryImg)}" alt="${escapeHtml(item.name)}" class="w-full h-full object-cover" loading="lazy" data-fallback="${escapeHtml(defaultPlaceholder)}" onerror="this.onerror=null;this.src=this.dataset.fallback"/>
                     <button type="button" data-nutrition-trigger class="absolute top-2 right-2 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-white/90 backdrop-blur-sm text-stone-700 border border-stone-200/80 shadow-sm hover:bg-white transition-colors">
                       📊 Nutrition
                     </button>
                   </div>
-                  <div class="p-4 flex flex-col flex-1">
-                    <div class="flex items-center gap-2 mb-1">
-                      <h3 class="font-display font-semibold text-stone-800 text-lg">${escapeHtml(item.name)}</h3>
+                  <div class="p-4 flex flex-col flex-1 min-h-0">
+                    <div class="flex items-start gap-2 mb-1 min-h-[3.5rem]">
+                      <h3 class="font-display font-semibold text-stone-800 text-lg line-clamp-2 flex-1 min-w-0">${escapeHtml(item.name)}</h3>
                       ${roleBadge}
                     </div>
-                    <p class="text-xs text-stone-500 mb-2">${escapeHtml(item.restaurant)}</p>
-                    ${(item.description || "").trim() ? `<p class="text-sm text-stone-600 flex-1 line-clamp-2 mb-3">${escapeHtml(item.description)}</p>` : ""}
-                    <div class="flex items-center gap-2 text-xs text-stone-500 mb-3">
+                    <p class="text-xs text-stone-500 mb-2 line-clamp-1">${escapeHtml(item.restaurant || "")}</p>
+                    <div class="text-sm text-stone-600 line-clamp-2 mb-3 min-h-[2.5rem] flex-1">${shortDesc ? escapeHtml(shortDesc) : "&nbsp;"}</div>
+                    <div class="flex items-center gap-2 text-xs text-stone-500 mb-3 shrink-0">
                       <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-amber-100 text-amber-800">🌾 ${escapeHtml(macroStr)}</span>
                     </div>
-                    <div class="flex items-center justify-between mt-auto gap-3">
-                      <span class="text-xl font-bold text-stone-800">${escapeHtml(item.price || "—")}</span>
+                    <div class="flex items-center justify-between gap-3 shrink-0">
+                      <span class="text-xl font-bold text-stone-800 truncate">${escapeHtml(item.price || "—")}</span>
                       <button type="button" data-order-btn class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium text-sm bg-emerald-600 text-white hover:bg-emerald-700 transition-colors shadow-sm shrink-0" data-order-url="${escapeHtml(orderUrl)}">
                         Order →
                       </button>
@@ -570,36 +572,18 @@
             fetch(`/warm_cache?patient_id=${patientId}&city=braga-norte`).catch(() => {});
           });
 
-          btn.addEventListener("click", async () => {
+          btn.addEventListener("click", () => {
             const spinner = document.querySelector("[data-find-food-spinner]");
             const label = document.querySelector("[data-find-food-label]");
+            if (currentItems.length === 0) return;
             btn.disabled = true;
             spinner?.classList.remove("hidden");
-            label.textContent = "Checking…";
-            resultsEl?.classList.add("hidden");
-            errorEl?.classList.add("hidden");
-            errorEl.textContent = "";
-            try {
-              const [foodRes, basketRes] = await Promise.all([
-                fetch(`/find_food?patient_id=${patientId}`),
-                fetch(`/grocery_basket?patient_id=${patientId}&city=braga-norte`)
-              ]);
-              const foodData = foodRes.ok ? await foodRes.json() : null;
-              const basketData = basketRes.ok ? await basketRes.json() : null;
-              const items = mergeItems(foodData || {}, basketData || {});
-              if (items.length === 0) {
-                const err = !foodRes.ok && foodData?.error ? foodData.error : (!basketRes.ok && basketData?.error ? basketData.error : "No items found");
-                throw new Error(err);
-              }
-              renderResults(items);
-            } catch (err) {
-              errorEl.textContent = err.message;
-              errorEl?.classList.remove("hidden");
-            } finally {
-              btn.disabled = false;
-              spinner?.classList.add("hidden");
-              label.textContent = "Find food";
-            }
+            label.textContent = "Refreshing…";
+            const shuffled = shuffle([...currentItems]);
+            renderResults(shuffled);
+            btn.disabled = false;
+            spinner?.classList.add("hidden");
+            label.textContent = "Refresh";
           });
 
           document.querySelector("[data-add-to-cart]")?.addEventListener("click", async () => {

@@ -23,4 +23,5 @@ COPY data/ ./data/
 ENV PORT=5001
 EXPOSE 5001
 
-CMD ["gunicorn", "--bind", "0.0.0.0:5001", "--workers", "4", "--threads", "2", "--timeout", "120", "api:app"]
+# Use 2 workers to avoid OOM - Playwright/Chromium uses ~300-500MB per browser instance
+CMD ["gunicorn", "--bind", "0.0.0.0:5001", "--workers", "2", "--threads", "2", "--timeout", "120", "api:app"]

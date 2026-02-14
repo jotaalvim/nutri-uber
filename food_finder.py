@@ -627,7 +627,7 @@ def scrape_restaurant_menu(
                 time.sleep(0.6)
 
             # Extract menu items via JS - name, price, image, description
-            items = page.evaluate("""
+            items = page.evaluate(r"""
                 () => {
                     const results = [];
                     const skipStarts = ['Can I', 'How do', 'Where can', 'Is ', 'Learn '];
