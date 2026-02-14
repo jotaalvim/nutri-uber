@@ -1,0 +1,169 @@
+<% content_for :title, "Nutri Dashboard" %>
+
+<div class="space-y-6">
+  <section class="rounded-2xl bg-white border border-stone-200/80 shadow-sm p-4 sm:p-5">
+    <div class="flex flex-wrap items-center gap-2 sm:gap-3">
+      <span class="text-sm font-medium text-stone-500 flex items-center gap-1.5">
+        <span aria-hidden="true">👤</span>
+        Select patient
+      </span>
+      <div class="flex flex-wrap gap-2">
+        <% @patients.each do |patient| %>
+          <%= link_to patient.patient_name,
+              dashboard_path(patient_id: patient.id),
+              class: "px-4 py-2 rounded-xl font-medium text-sm transition-all duration-200 #{@selected_patient&.id == patient.id ? 'bg-amber-500 text-white shadow-md ring-2 ring-amber-400/50' : 'bg-amber-50 text-stone-600 hover:bg-amber-100 hover:text-stone-800 border border-stone-200/60'}" %>
+        <% end %>
+      </div>
+    </div>
+  </section>
+
+  <% if @selected_patient %>
+    <section class="rounded-2xl bg-gradient-to-br from-amber-500/10 via-amber-50 to-emerald-500/10 border border-stone-200/80 shadow-sm p-6 sm:p-8">
+      <h2 class="font-display text-lg font-semibold text-stone-800 mb-4 flex items-center gap-2">
+        <span aria-hidden="true">🎯</span>
+        Daily nutrition goals
+      </h2>
+      <% total_macros = @selected_patient.protein_grams.to_f + @selected_patient.carbohydrate_grams.to_f + @selected_patient.fat_grams.to_f %>
+      <% pct_p = total_macros > 0 ? (@selected_patient.protein_grams.to_f / total_macros) * 100 : 0 %>
+      <% pct_c = total_macros > 0 ? (@selected_patient.carbohydrate_grams.to_f / total_macros) * 100 : 0 %>
+      <% pct_f = total_macros > 0 ? (@selected_patient.fat_grams.to_f / total_macros) * 100 : 0 %>
+      <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6">
+        <div>
+          <p class="text-sm text-stone-500 mb-0.5">Total energy (DEE)</p>
+          <p class="text-4xl sm:text-5xl font-display font-bold text-amber-600">
+            <%= @selected_patient.dee_goal %>
+            <span class="text-xl font-normal text-stone-500"><%= @selected_patient.dee_goal_unit.presence || "kcal" %></span>
+          </p>
+        </div>
+        <div class="flex-1 max-w-md space-y-3">
+          <div class="flex items-center gap-3">
+            <span class="text-xs font-medium text-stone-500 w-16">Protein</span>
+            <div class="flex-1 h-2.5 bg-stone-200 rounded-full overflow-hidden">
+              <div class="h-full bg-orange-500 rounded-full transition-all" style="width: <%= pct_p %>%"></div>
+            </div>
+            <span class="text-sm font-semibold text-stone-700 w-12 text-right"><%= @selected_patient.protein_grams %>g</span>
+          </div>
+          <div class="flex items-center gap-3">
+            <span class="text-xs font-medium text-stone-500 w-16">Carbs</span>
+            <div class="flex-1 h-2.5 bg-stone-200 rounded-full overflow-hidden">
+              <div class="h-full bg-amber-500 rounded-full transition-all" style="width: <%= pct_c %>%"></div>
+            </div>
+            <span class="text-sm font-semibold text-stone-700 w-12 text-right"><%= @selected_patient.carbohydrate_grams %>g</span>
+          </div>
+          <div class="flex items-center gap-3">
+            <span class="text-xs font-medium text-stone-500 w-16">Fat</span>
+            <div class="flex-1 h-2.5 bg-stone-200 rounded-full overflow-hidden">
+              <div class="h-full bg-emerald-600 rounded-full transition-all" style="width: <%= pct_f %>%"></div>
+            </div>
+            <span class="text-sm font-semibold text-stone-700 w-12 text-right"><%= @selected_patient.fat_grams %>g</span>
+          </div>
+          <div class="pt-2 flex items-center gap-2 text-sm text-stone-600">
+            <span aria-hidden="true">🌾</span>
+            <span><strong>Fiber:</strong> <%= @selected_patient.fiber_grams %>g/day</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="grid gap-6 lg:grid-cols-2">
+      <% dietary = @selected_patient.dietary_history %>
+      <section class="rounded-2xl bg-white border border-stone-200/80 shadow-sm p-6">
+        <h2 class="font-display text-lg font-semibold text-stone-800 mb-4 flex items-center gap-2">
+          <span aria-hidden="true">🍽️</span>
+          Dietary info
+        </h2>
+        <dl class="space-y-4">
+          <div class="flex gap-3">
+            <dt class="text-stone-500 text-sm font-medium w-24 shrink-0">Schedule</dt>
+            <dd class="text-stone-800 text-sm">
+              <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-amber-100 text-stone-700">
+                ☀️ <%= dietary["wake_up_time_24h"].presence || "—" %>
+              </span>
+              <span class="text-stone-400 mx-1">→</span>
+              <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-stone-100 text-stone-700">
+                🌙 <%= dietary["bedtime_24h"].presence || "—" %>
+              </span>
+            </dd>
+          </div>
+          <div class="flex gap-3">
+            <dt class="text-stone-500 text-sm font-medium w-24 shrink-0">Favorites</dt>
+            <dd class="text-stone-800 text-sm"><%= dietary["favorite_foods"].presence || "—" %></dd>
+          </div>
+          <div class="flex gap-3">
+            <dt class="text-stone-500 text-sm font-medium w-24 shrink-0">Disliked</dt>
+            <dd class="text-stone-800 text-sm"><%= dietary["disliked_foods"].presence || "—" %></dd>
+          </div>
+          <div class="flex gap-3">
+            <dt class="text-stone-500 text-sm font-medium w-24 shrink-0">Allergies</dt>
+            <dd class="text-stone-800 text-sm">
+              <span class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-sm <%= @selected_patient.has_allergies? ? 'bg-orange-100 text-orange-800 font-medium' : 'bg-emerald-100 text-emerald-800' %>">
+                <% if @selected_patient.has_allergies? %>
+                  ⚠️ <%= @selected_patient.safe_get(dietary, %w[food_allergies details]) %>
+                <% else %>
+                  ✓ None reported
+                <% end %>
+              </span>
+            </dd>
+          </div>
+        </dl>
+      </section>
+
+      <% medical = @selected_patient.medical_history %>
+      <section class="rounded-2xl bg-white border border-stone-200/80 shadow-sm p-6">
+        <h2 class="font-display text-lg font-semibold text-stone-800 mb-4 flex items-center gap-2">
+          <span aria-hidden="true">💊</span>
+          Medical
+        </h2>
+        <dl class="space-y-4">
+          <div class="flex gap-3">
+            <dt class="text-stone-500 text-sm font-medium w-24 shrink-0">Conditions</dt>
+            <dd class="text-stone-800 text-sm"><%= @selected_patient.safe_get(medical, %w[diseases details]).presence || "—" %></dd>
+          </div>
+          <div class="flex gap-3">
+            <dt class="text-stone-500 text-sm font-medium w-24 shrink-0">Medications</dt>
+            <dd class="text-stone-800 text-sm"><%= medical["medications"].presence || "—" %></dd>
+          </div>
+        </dl>
+      </section>
+    </div>
+
+    <% diary = @selected_patient.food_diary %>
+    <section class="rounded-2xl bg-white border border-stone-200/80 shadow-sm p-6 sm:p-8">
+      <h2 class="font-display text-lg font-semibold text-stone-800 mb-4 flex items-center gap-2">
+        <span aria-hidden="true">📋</span>
+        Food diary
+      </h2>
+      <% if diary.any? %>
+        <div class="space-y-6">
+          <% diary.each do |entry| %>
+            <div class="rounded-xl border border-stone-200/80 bg-amber-50/50 p-5">
+              <div class="flex flex-wrap items-center gap-2 mb-3">
+                <span class="text-sm font-semibold text-stone-700"><%= entry["date"] %></span>
+                <% if entry["observations"].to_s.strip.present? %>
+                  <span class="text-xs text-stone-500">•</span>
+                  <p class="text-sm text-stone-600 flex-1 min-w-0"><%= entry["observations"] %></p>
+                <% end %>
+              </div>
+              <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                <% (entry["meals"] || []).each do |meal| %>
+                  <div class="rounded-lg bg-white border border-stone-200/60 p-3 shadow-sm">
+                    <p class="text-xs font-medium text-amber-600 uppercase tracking-wide mb-1"><%= meal["meal_type"] %></p>
+                    <p class="text-sm text-stone-700"><%= meal["text"] %></p>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      <% else %>
+        <p class="text-stone-500 text-sm py-4">No food diary entries yet.</p>
+      <% end %>
+    </section>
+  <% else %>
+    <div class="rounded-2xl bg-white border border-stone-200/80 shadow-sm p-12 text-center">
+      <p class="text-5xl mb-4" aria-hidden="true">🥗</p>
+      <p class="text-stone-600 font-medium">No patients in database.</p>
+      <p class="text-stone-500 text-sm mt-1">Run seeds to load data.</p>
+    </div>
+  <% end %>
+</div>
