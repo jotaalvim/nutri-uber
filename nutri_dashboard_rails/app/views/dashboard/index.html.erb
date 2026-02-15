@@ -666,8 +666,7 @@
             btn.disabled = true;
             spinner?.classList.remove("hidden");
             label.textContent = "Refreshing…";
-            const shuffled = shuffle([...currentItems]);
-            renderResults(shuffled);
+            renderResults([...currentItems]);
             btn.disabled = false;
             spinner?.classList.add("hidden");
             label.textContent = "Refresh";
