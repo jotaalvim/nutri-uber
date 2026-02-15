@@ -308,22 +308,30 @@ class DashboardController < ApplicationController
       diary = JSON.parse((infos["food_diary_history_and_obs"] || []).to_json)
     end
     entry = diary.find { |e| e["date"].to_s == date }
+    meal_updated = false
     if entry && entry["meals"].present?
       meal_without_reason = entry["meals"].reverse.find { |m| m["reason"].blank? }
       if meal_without_reason
         meal_without_reason["reason"] = reason
         meal_without_reason["meal_type"] = meal_type
-        meal_without_reason["red_flag"] = true if red_flag
+        meal_without_reason["red_flag"] = red_flag
+        meal_updated = true
       end
     end
     infos["dietary_history"] ||= {}
     infos["dietary_history"][diary_key] = diary
 
-    infos["order_out_reason_by_date"] ||= {}
-    existing = infos["order_out_reason_by_date"][date]
-    reasons = Array(existing).dup
-    reasons << reason
-    infos["order_out_reason_by_date"][date] = reasons
+    # Only append to order_out_reason_by_date when we did NOT update a meal (e.g. legacy flow).
+    # When we update a meal, the reason and red_flag live on the meal; appending would cause
+    # wrong pairing when multiple meals lack reasons (first meal would get the reason via
+    # reasons_left.shift but wouldn't have red_flag).
+    unless meal_updated
+      infos["order_out_reason_by_date"] ||= {}
+      existing = infos["order_out_reason_by_date"][date]
+      reasons = Array(existing).dup
+      reasons << reason
+      infos["order_out_reason_by_date"][date] = reasons
+    end
     patient.update!(patient_infos: infos)
     broadcast_order_out_update(patient)
 
