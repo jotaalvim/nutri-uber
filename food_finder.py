@@ -437,6 +437,32 @@ def load_continente_grocery_from_all_menus(
         return []
 
 
+def load_healthy_fallback_items(
+    filepath: str | Path | None = None,
+    max_restaurant: int = 40,
+    max_grocery: int = 20,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """
+    Load curated healthy items from healthy_menus.json.
+    Returns (restaurant_items, grocery_items) for cold-cache fallback.
+    No unhealthy food from all_menus.
+    """
+    path = Path(filepath or (Path(__file__).parent / "healthy_menus.json"))
+    if not path.exists():
+        return [], []
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        restaurant = (data.get("restaurant_items") or [])[:max_restaurant]
+        grocery = (data.get("grocery_items") or [])[:max_grocery]
+        for it in restaurant:
+            it.setdefault("restaurant_url", it.get("product_url", ""))
+        for it in grocery:
+            it.setdefault("store_url", it.get("restaurant_url", ""))
+        return restaurant, grocery
+    except Exception:
+        return [], []
+
+
 def load_all_menus_items(
     filepath: str | Path | None = None,
     max_items: int = 800,

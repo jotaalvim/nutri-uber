@@ -17,7 +17,7 @@ RUN playwright install chromium
 RUN playwright install-deps chromium
 
 COPY api.py cache.py calorie_estimator.py food_finder.py nutrition_local_db.py uber_eats_integration.py ./
-COPY all_menus.json food_database.json ./
+COPY all_menus.json healthy_menus.json food_database.json ./
 COPY data/ ./data/
 
 ENV PORT=5001

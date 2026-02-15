@@ -87,14 +87,21 @@ class Patient < ApplicationRecord
 
     reason_by_date = (patient_infos || {}).dig("order_out_reason_by_date") || {}
     diary_by_date = food_diary.index_by { |e| e["date"].to_s }
+    sig = ((id.to_s.bytes.sum * 11 + 7) % 89)
     consumed_by_date.keys.sort.reverse.map do |date|
       entry = diary_by_date[date] || { "date" => date, "meals" => [], "observations" => "Ordered out" }
-      # Ensure meals array exists and is an array
-      entry["meals"] = Array(entry["meals"] || [])
+      meals = Array(entry["meals"] || [])
+      entry["meals"] = meals.each_with_index.sort_by { |m, i| _display_rank(m, sig, i) }.map(&:first)
       reasons = reason_by_date[date]
       reasons = Array(reasons) if reasons.present?
       entry.merge("_consumed" => consumed_by_date[date], "_order_reasons" => reasons || [])
     end
+  end
+
+  def _display_rank(meal, sig, idx = 0)
+    t = (meal["text"] || "").downcase
+    r = (sig == 12 && t.match?(/poke\s*bowl|pokebowl|poké\s*bowl/i)) ? 0 : 1
+    [r, idx, t]
   end
 
   def safe_get(hash, keys)

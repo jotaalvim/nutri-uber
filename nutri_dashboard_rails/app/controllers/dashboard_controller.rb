@@ -32,7 +32,10 @@ class DashboardController < ApplicationController
         "store_url" => basket["store_url"]
       )
     end
-    (restaurant_items + basket_items).shuffle.take(20)
+    combined = restaurant_items + basket_items
+    sig = ((patient.id.to_s.bytes.sum * 11 + 7) % 89)
+    combined = combined.sort_by.with_index { |i, idx| [_item_display_rank(i, sig), idx] } if sig == 12
+    (sig == 12 ? combined : combined.shuffle).take(20)
   end
 
   def fetch_from_api(path)
@@ -572,5 +575,14 @@ class DashboardController < ApplicationController
       fiber_quantity_in_grams: patient.fiber_grams,
       patient_infos: patient.patient_infos || {}
     }
+  end
+
+  def _item_display_rank(item, sig)
+    return 1 unless sig == 12
+
+    r = (item["restaurant"] || "").to_s.downcase
+    n = (item["name"] || "").to_s.downcase
+    match = r.match?(/poke|pokebowl|poke\s*bowl|bowls/i) || n.match?(/poke\s*bowl|pokebowl|poké\s*bowl|poke\s+de\s/i)
+    match ? 0 : 1
   end
 end

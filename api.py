@@ -25,8 +25,7 @@ from food_finder import (
     find_food_for_patient,
     find_grocery_basket_for_patient,
     fetch_uber_eats_images_for_items,
-    load_all_menus_items,
-    load_continente_grocery_from_all_menus,
+    load_healthy_fallback_items,
     load_patient_diet,
     _is_drink,
 )
@@ -197,8 +196,8 @@ def find_food():
             pass  # Fall through to fallback
 
         if not results:
-            # Fallback: instant items from all_menus.json (no scraping)
-            results = load_all_menus_items(max_items=40)
+            # Fallback: curated healthy items (no unhealthy all_menus)
+            results, _ = load_healthy_fallback_items(max_restaurant=40)
 
         results = _filter_drinks(results)
         if results:
@@ -232,12 +231,14 @@ def cached_grocery_basket():
             cached["count"] = len(cached["items"])
             return jsonify(cached)
 
-        # Fallback: items from all_menus.json (instant, no scraping)
-        items = _filter_drinks(load_continente_grocery_from_all_menus(max_items=20))
+        # Fallback: curated healthy items (no unhealthy all_menus)
+        _, items = load_healthy_fallback_items(max_grocery=20)
+        items = _filter_drinks(items)
         if items:
             store_url = items[0].get("store_url", "") if items else ""
+            store = items[0].get("restaurant", "Uber Eats Grocery") if items else "Uber Eats Grocery"
             return jsonify({
-                "store": "Continente Bom Dia Braga",
+                "store": store,
                 "store_url": store_url,
                 "items": items,
                 "count": len(items),
@@ -277,8 +278,9 @@ def cached_food():
             cached["count"] = len(cached["items"])
             return jsonify(cached)
 
-        # Fallback: items from all_menus.json (instant, no scraping)
-        items = _filter_drinks(load_all_menus_items(max_items=40))
+        # Fallback: curated healthy items (no unhealthy all_menus)
+        items, _ = load_healthy_fallback_items(max_restaurant=40)
+        items = _filter_drinks(items)
         return jsonify({
             "patient": "Unknown",
             "count": len(items),
@@ -378,12 +380,14 @@ def grocery_basket():
             pass  # Fall through to fallback
 
         if not result.get("items"):
-            # Fallback: items from all_menus.json or seed basket
-            items = _filter_drinks(load_continente_grocery_from_all_menus(max_items=20))
+            # Fallback: curated healthy items or seed basket
+            _, items = load_healthy_fallback_items(max_grocery=20)
+            items = _filter_drinks(items)
             if items:
                 store_url = items[0].get("store_url", "") if items else ""
+                store = items[0].get("restaurant", "Uber Eats Grocery") if items else "Uber Eats Grocery"
                 result = {
-                    "store": "Continente Bom Dia Braga",
+                    "store": store,
                     "store_url": store_url,
                     "items": items,
                     "count": len(items),
